@@ -4,7 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 import numpy as np
 import time
-import setup as fmt
+import __init__ as fmt
 
 options = webdriver.ChromeOptions()
 options.add_argument("--headless")
