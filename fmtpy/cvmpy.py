@@ -148,7 +148,7 @@ class Indicador(fmt):
 
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         super().__init__(papel, False)
-        self.driver = wdriver
+        self.wdriver = wdriver
         self.indicador = RawIndicador(self.papel, self.wdriver)
     
 
