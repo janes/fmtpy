@@ -4,7 +4,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 import numpy as np
 import time
-from . import * as fmt
+from . import Indicador as fmt
+from . import Dados as fmtdados
 
 options = webdriver.ChromeOptions()
 options.add_argument("--headless")
@@ -39,7 +40,7 @@ class RawIndicador:
 
     def __init__(self, papel):
         self.papel = papel
-        self.dados = fmt.Dados(self.papel)
+        self.dados = fmtdados(self.papel)
         self.cd_cvm = self.dados.cd_cvm()
         self.relatorios = {}
         self.series = {}
