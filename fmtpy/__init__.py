@@ -1,3 +1,5 @@
+# Esse pacote obtem os dados do site Investsite.com e da Uol
+
 from bs4 import BeautifulSoup
 import requests
 import numpy as np
@@ -183,7 +185,7 @@ class Indicador:
         return relatorio
         
 
-
+# As classes abaixo buscam cotações históricas e intraday
 class Series:
 
     def __init__(self, papel):

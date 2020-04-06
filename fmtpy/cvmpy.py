@@ -1,3 +1,5 @@
+## Esse pacote busca os dados na CVM usando o Selenium, é necessário fazer o download do Chromewebdriver
+
 from bs4 import BeautifulSoup
 import requests
 from selenium.webdriver.common.keys import Keys
@@ -38,10 +40,11 @@ indice_ind = {
 
 class RawIndicador:
 
-    def __init__(self, papel):
+    def __init__(self, papel, wdriver = 'chromedriver.exe'):
         self.papel = papel
         self.dados = fmtdados(self.papel)
         self.cd_cvm = self.dados.cd_cvm()
+        self.wdriver = wdriver
         self.relatorios = {}
         self.series = {}
         
@@ -122,7 +125,7 @@ class RawIndicador:
         dados = self.relatorios_cvm(ano)
         num = dados[tri][2]
 
-        driver = webdriver.Chrome('chromedriver.exe', chrome_options=options)
+        driver = webdriver.Chrome(self.wdriver, chrome_options=options)
         # instanciar
         url = f'http://www.rad.cvm.gov.br/ENETCONSULTA/frmGerenciaPaginaFRE.aspx?NumeroSequencialDocumento={num}&CodigoTipoInstituicao=2'
         driver.get(url)
@@ -143,9 +146,10 @@ class RawIndicador:
 
 class Indicador(fmt):
 
-    def __init__(self, papel):
+    def __init__(self, papel, wdriver = 'chromedriver.exe'):
         super().__init__(papel, False)
-        self.indicador = RawIndicador(self.papel)
+        self.driver = wdriver
+        self.indicador = RawIndicador(self.papel, self.wdriver)
     
 
 
