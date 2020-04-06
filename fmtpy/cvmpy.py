@@ -4,7 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 import numpy as np
 import time
-import __init__ as fmt
+from . import Indicador as fmt
 
 options = webdriver.ChromeOptions()
 options.add_argument("--headless")
@@ -140,7 +140,7 @@ class RawIndicador:
         return tabela
 
 
-class Indicador(fmt.Indicador):
+class Indicador(fmt):
 
     def __init__(self, papel):
         super().__init__(papel, False)
