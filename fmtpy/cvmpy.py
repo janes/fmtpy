@@ -6,8 +6,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 import numpy as np
 import time
-from . import Indicador as fmt
-from . import Dados as fmtdados
+import main
+
 
 options = webdriver.ChromeOptions()
 options.add_argument("--headless")
@@ -42,7 +42,7 @@ class RawIndicador:
 
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         self.papel = papel
-        self.dados = fmtdados(self.papel)
+        self.dados = main.Dados(self.papel)
         self.cd_cvm = self.dados.cd_cvm()
         self.wdriver = wdriver
         self.relatorios = {}
@@ -76,8 +76,9 @@ class RawIndicador:
             soup = BeautifulSoup(response.content, 'html.parser')
   
             viewstate = soup.find('input', id='__VIEWSTATE')
+            eventval = soup.find('input', id='__EVENTVALIDATION')
             
-            if viewstate != None:
+            if viewstate and eventval:
                 break
             elif i==19:
                 print(url)
@@ -85,7 +86,7 @@ class RawIndicador:
                 
 
         viewstate = viewstate['value']
-        eventval = soup.find('input', id='__EVENTVALIDATION')['value']
+        eventval = eventval['value']
         data = {
             '__EVENTTARGET': 'ctl00$contentPlaceHolderConteudo$cmbAno',
             '__EVENTARGUMENT': '',
@@ -144,7 +145,7 @@ class RawIndicador:
         return tabela
 
 
-class Indicador(fmt):
+class Indicador(main.Indicador):
 
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         super().__init__(papel, False)
