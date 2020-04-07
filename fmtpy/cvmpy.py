@@ -70,10 +70,10 @@ class RawIndicador:
         
         url = f'http://bvmf.bmfbovespa.com.br/cias-listadas/empresas-listadas/ResumoDemonstrativosFinanceiros.aspx?codigoCvm={self.cd_cvm}&idioma=pt-br'
         
+        
 
         for i in range(20):
-            response = requests.post(url, headers=headers)
-            soup = BeautifulSoup(response.content, 'html.parser')
+            soup = main.bstimeout(url, 10)
   
             viewstate = soup.find('input', id='__VIEWSTATE')
             eventval = soup.find('input', id='__EVENTVALIDATION')
@@ -81,7 +81,6 @@ class RawIndicador:
             if viewstate and eventval:
                 break
             elif i==19:
-                print(url)
                 print('Número de tentativas excedidads para o site da B3!!')
                 
 
@@ -101,8 +100,7 @@ class RawIndicador:
 
         # as vezes a página da bolsa precisa de mais de uma tentativa para retornar os dados
         for i in range(20):
-            response = requests.post(url, data=data, headers=headers)
-            soup = BeautifulSoup(response.content, 'html.parser')
+            soup = main.bstimeout(url, 10, data=data)
             relatorios = [i for i in soup.find_all('a') if "Informações Trimestrais" in i.text or 'Demonstrações Financeiras Padronizadas' in i.text]
             
             if len(relatorios) > 0:

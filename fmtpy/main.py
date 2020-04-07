@@ -15,8 +15,6 @@ mes_trimestre = {
 
 headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
-def teste():
-    print('b')
 
 # retira acentos de uma string
 def ascii(str):
@@ -25,41 +23,20 @@ def ascii(str):
     nome = ''.join([a[i] if i in a else i for i in str])
     return nome
 
-# Obtem o cnpj e isin
-def cnpj(papel):
- 
-    cd = cd_cvm(papel)
-
-    url='http://bvmf.bmfbovespa.com.br/pt-br/mercados/acoes/empresas/ExecutaAcaoConsultaInfoEmp.asp?CodCVM='+str(cd)
-    
-    r = requests.get(url, headers=headers)
-    soup = BeautifulSoup(r.content, 'html.parser').find('ul', class_='accordion').findAll('tr')
-    
-    tipo_papel = 'ACNOR' if int(papel[-1:]) == 3 else 'ACNPR'
-    
-    return {'isin' : [i.replace(',','') for i in list(set(soup[1].text.split())) if i[6:11] == tipo_papel][0],
-            'CNPJ' : soup[2].text.split()[1]}
-    
-    
-  
-        
-# Busca o código cvm
-def cd_cvm(papel):
-    url = f'http://bvmf.bmfbovespa.com.br/cias-listadas/empresas-listadas/BuscaEmpresaListada.aspx?Nome={papel}&idioma=pt-br'
+# Função para fazer obter o html do site da b3,
+# muitas vezes a página fica carregando muito tempo, é necessário recarregar algumas vezes até funcionar
+def bstimeout(url, time, data=''):
     for i in range(20):
-        r = requests.get(url, headers=headers)
-        soup = BeautifulSoup(r.content, 'html.parser')
-        codigo = soup.find('tr', class_='GridRow_SiteBmfBovespa GridBovespaItemStyle')
-        if codigo != None:
-            break
-        elif i==19:
-            print('Número de tentativas excedidads para o site da B3!!')   
-    codigo = codigo.find('td').find('a')['href']
-    codigo[codigo.find('codigoCvm=')+len('codigoCvm='):]
-    return int(codigo[codigo.find('codigoCvm=')+len('codigoCvm='):])
-    
-    
-    
+        try:
+            response = requests.post(url, data=data, headers=headers, timeout=time)
+            soup = BeautifulSoup(response.content,'html.parser')
+            return soup
+        except:
+ #           print(i)
+            pass
+    print('Tentativas excedidas')
+
+
 codigos = {
     'Resultado' : [4, 'dre_empresa'],
     'Balanço Ativo' : [2, 'balanco_empresa'],
@@ -79,18 +56,97 @@ indice_ind = {
 1:'Resultado', 2:'Balanço Ativo', 3:'Balanço Passivo', 4:'Resultado Abrangente', 5:'Fluxo de Caixa', 6:'Valor Adicionado', 7:'Mutações do PL'
 }
 
-class Dados:
+# Busca o codigo cvm, cnpj e isin usando o site da B3, 
+# mas o site da B3 é muito instável, por padrão usamos a classe Dados
+class Dados_B3:
 
     def __init__(self, papel):
         self.papel = papel
 
-    # Obtem o nome e cnpj da ação no site status invest
+    # Obtem o cnpj e isin
     def cnpj(self):
-        return cnpj(self.papel)
+    
+        if '__cnpj' in self.__dict__:
+            return self.__dict__['__cnpj']
+
+        cd = self.cd_cvm()
+
+        url='http://bvmf.bmfbovespa.com.br/pt-br/mercados/acoes/empresas/ExecutaAcaoConsultaInfoEmp.asp?CodCVM='+str(cd)
+        
+        soup = bstimeout(url, 3)
+        soup = soup.find('ul', class_='accordion').findAll('tr')
+        
+        tipo_papel = 'ACNOR' if int(self.papel[-1:]) == 3 else 'ACNPR'
+        isin = [i.replace(',','') for i in list(set(soup[1].text.split())) if i[6:11] == tipo_papel][0]
+        cnpj = soup[2].text.split()[1]
+
+        setattr(self, '__isin', isin)
+        setattr(self, '__cnpj', cnpj)
+
+        return cnpj
+
+
+    def isin(self):
+        if '__isin' in self.__dict__:
+            return self.__dict__['__isin']
+        self.cnpj()
+        isin = self.__isin
+        return isin
         
     # Busca o nome da empresa listada na cvm e o código
     def cd_cvm(self):
-        return cd_cvm(self.papel)
+
+        if '__cd_cvm' in self.__dict__:
+            return self.__dict__['__cd_cvm']
+
+        url = f'http://bvmf.bmfbovespa.com.br/cias-listadas/empresas-listadas/BuscaEmpresaListada.aspx?Nome={self.papel}&idioma=pt-br'
+        soup = bstimeout(url, 3)
+        codigo = soup.find('tr', class_='GridRow_SiteBmfBovespa GridBovespaItemStyle')
+        codigo = codigo.find('td').find('a')['href']
+        codigo[codigo.find('codigoCvm=')+len('codigoCvm='):]
+        cd_cvm = int(codigo[codigo.find('codigoCvm=')+len('codigoCvm='):])
+        setattr(self, '__cd_cvm', cd_cvm)
+        return cd_cvm
+
+
+# Obtem dados de outros sites
+class Dados:
+
+    def __init__(self, papel):
+        self.papel = papel
+        self.dados = {}
+
+    # Obtem o nome e cnpj da ação no site status invest
+    def cnpj(self):
+        if '__cnpj' in self.__dict__:
+            return self.__dict__['__cnpj']
+        url = f"""https://statusinvest.com.br/acoes/"""+self.papel.lower()
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        try:
+            cnpj = soup.find('small', class_ = 'd-block fs-4 fw-100 lh-4').text
+            setattr(self, '__cnpj', cnpj)
+            return cnpj
+        except:
+            print('CNPJ não encontrado')   
+
+    # Obtem o isin no site adfvn
+    def isin(self):
+        url='https://br.advfn.com/p.php?pid=qkquote&symbol='+self.papel.lower()
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        isin = soup.find(id = 'quoteElementPiece5').text 
+        setattr(self, '__isin', isin)
+        return isin
+        
+    # Busca o código cvm no site da cvm
+    def cd_cvm(self):
+        url=f'https://cvmweb.cvm.gov.br/SWB/Sistemas/SCW/CPublica/CiaAb/ResultBuscaParticCiaAb.aspx?CNPJNome={self.cnpj()}&TipoConsult=C'
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        cd_cvm = soup.find(id = 'dlCiasCdCVM__ctl1_Linkbutton5').text  
+        setattr(self, '__cd_cvm', cd_cvm)   
+        return int(cd_cvm)
 
 
 # Obtem dados do site investsite   
@@ -99,7 +155,7 @@ class RawIndicador:
     def __init__(self, papel):
         self.papel = papel
         self.dados = Dados(self.papel)
-        self.isin = self.dados.cnpj()['isin']
+        self.isin = self.dados.isin()
         self.series = {}
         
     def raw(self, ind, ano, tri):
