@@ -1,7 +1,7 @@
 # Esse pacote obtem os dados do site Investsite.com e da Uol
 
-import main 
-import cvmpy
+from fmtpy import main 
+from fmtpy import cvmpy
 
 class Balancos_invest(main.Indicador):
     def __init__(self, papel):
