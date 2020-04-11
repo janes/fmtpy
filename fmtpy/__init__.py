@@ -3,11 +3,11 @@
 from fmtpy import main 
 from fmtpy import cvmpy
 
-class Balancos_invest(main.Indicador):
+class Balancos_invest(main.Balanco):
     def __init__(self, papel):
         super().__init__(papel, True)
 
-class Balancos_cvm(cvmpy.Indicador):
+class Balancos_cvm(cvmpy.Balanco):
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         super().__init__(papel, wdriver)
 

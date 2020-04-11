@@ -7,6 +7,7 @@ from selenium import webdriver
 import numpy as np
 import time
 from fmtpy import main 
+#import main
 
 
 options = webdriver.ChromeOptions()
@@ -38,7 +39,7 @@ indice_ind = {
 }
 
 
-class RawIndicador:
+class Raw:
 
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         self.papel = papel
@@ -126,12 +127,13 @@ class RawIndicador:
 
         driver = webdriver.Chrome(self.wdriver, chrome_options=options)
         # instanciar
+        #driver.set_page_load_timeout(8)
+
         url = f'http://www.rad.cvm.gov.br/ENETCONSULTA/frmGerenciaPaginaFRE.aspx?NumeroSequencialDocumento={num}&CodigoTipoInstituicao=2'
         driver.get(url)
         
         url=link+str(num)
         driver.get(url)
-
         response = driver.execute_script("return document.getElementsByTagName('html')[0].innerHTML")
         soup = BeautifulSoup(response)
         tabela = soup.find('tbody').findAll('tr')
@@ -143,12 +145,12 @@ class RawIndicador:
         return tabela
 
 
-class Indicador(main.Indicador):
+class Balanco(main.Balanco):
 
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         super().__init__(papel, False)
         self.wdriver = wdriver
-        self.indicador = RawIndicador(self.papel, self.wdriver)
+        self.balanco = Raw(self.papel, self.wdriver)
     
 
 

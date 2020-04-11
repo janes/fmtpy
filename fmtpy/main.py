@@ -9,6 +9,7 @@ from scipy.stats import norm
 from scipy.stats import pearsonr
 
 
+
 mes_trimestre = {
 3:1, 6:2, 9:3, 12:4
 }
@@ -34,7 +35,8 @@ def bstimeout(url, time, data=''):
         except:
  #           print(i)
             pass
-    print('Tentativas excedidas')
+        
+    print('Número de tentavias excedidas no site da B3')
 
 
 codigos = {
@@ -150,7 +152,7 @@ class Dados:
 
 
 # Obtem dados do site investsite   
-class RawIndicador:
+class Raw:
 
     def __init__(self, papel):
         self.papel = papel
@@ -192,11 +194,12 @@ class RawIndicador:
         
 
 
-class Indicador:
+class Balanco:
 
     def __init__(self, papel, site=True):
         self.papel=papel
-        self.indicador = RawIndicador(self.papel) if site else None
+        self.site = site
+        self.balanco = Raw(self.papel) if site else None
 
 
     # Transforma os valores em float
@@ -221,24 +224,101 @@ class Indicador:
         x1[:,2]=res
         return x1
         
-        
-    def serie(self, ind, ano, tri, ajustado=True):
-        raw = self.indicador.raw(ind,ano,tri)
+    # puxa os dados e trata os campos
+    def raw(self):
+        raw = self.balanco.raw(self.ind,self.ano,self.tri)
         relatorio = self.__trata_valores(raw)
         
-        if not ajustado:
+        if not self.ajustado:
             return relatorio
         
         listtri = self.__tri_cons(relatorio)
         
         while len(listtri)>0:
-            triant = self.__trata_valores(self.indicador.raw(ind,ano,listtri[-1:][0]))
+            triant = self.__trata_valores(self.balanco.raw(self.ind,self.ano,listtri[-1:][0]))
             relatorio[1] = self.__subtrai_mes_ant(relatorio[1], triant[1])
             listtri = [i for i in listtri[:-1] if i not in self.__tri_cons(triant)]
             
         relatorio[0][2] = relatorio[0][2].split('a')[-1:][0]
 
         return relatorio
+
+    # Monta o layout da tabela
+    def get(self, ind, ano, tri, ajustado=True):
+        self.ind, self.ano, self.tri, self.ajustado = ind, ano, tri, ajustado
+        print(f'Obtendo {indice_ind[self.ind]} para {self.papel} referente ao {self.tri}º trimestre de {self.ano}')
+        raw = self.raw()
+        valores = raw[1]
+
+        ativo = [self.papel for i in valores]
+
+        tabela = {}
+        tabela.update({'ativo':['CD_ATIVO', ativo]})
+        tabela.update({'conta':['CONTA', 'DS_CONTA', valores[:,[0,1]]], 'valor':['VALOR',valores[:,2]]})
+        # adiciona outras colunas
+        #encontra trimestre inicial e final
+        datas = raw[0][2]
+        if not self.ajustado:
+            datas = raw[0][2].split('a')
+            datas = [datas for i in valores]
+            meses = [int(i.split('/')[1]) for i in datas[0]]
+            trimestre = [int(i/3)+1 if i%3 else int(i/3) for i in meses]
+            trimestre = [trimestre for i in valores]
+            tabela.update({'dataref': ['DATA_REF_INI', 'DATA_REF_FIM', datas]})
+            tabela.update({'trimestre': ['TRIMESTRE_INI', 'TRIMESTRE_FIM', trimestre]})
+        else:
+            trimestre = self.tri
+            trimestre = [trimestre for i in valores]
+            datas = [datas for i in valores]
+            tabela.update({'dataref':['DATA_REF', datas]})
+            tabela.update({'trimestre':['TRIMESTRE', trimestre]})
+
+        tabela.update({'ano':['ANO', [self.ano for i in valores]]})
+
+        # Data de entrega só tem se for rodado pela cvm
+        if not self.site:
+            relat = self.balanco.relatorios[self.ano][self.tri]
+            dataent = [relat[1] for i in valores]
+            numrelat = [relat[2] for i in valores]
+            tabela.update({'dataent':['DATA_ENT', dataent], 'relat':['NUM_RELATORIO', numrelat]})
+
+        tabela1 =  tabela['ativo'][-1]
+        colunas = tabela['ativo'][:-1]
+
+        # Gera a tabela final
+        for i in ['conta', 'relat', 'dataent', 'dataref', 'ano', 'trimestre', 'valor']:
+            if i in tabela:
+                colunas += tabela[i][:-1]
+                tabela1 = np.column_stack([tabela1,tabela[i][-1]])
+
+
+        return [colunas, tabela1]
+
+
+# Gera um dataframe       
+class Features:
+    def __init__(self, head, dados, nome=''):    
+        self.dados = np.array(dados)
+        self.head = head
+        self.ativo = nome
+        for j, i in enumerate(self.head):
+            setattr(self, i, [z[0] for z in self.dados[:,[j]]])
+
+
+        
+    def __repr__(self):
+        ativos = list(self.__dict__)[3:]
+        return str(self.ativo + '\n' + tabulate(np.concatenate(([ativos], np.column_stack([self.__dict__[i] for i in ativos])))))
+
+    def __getitem__(self, *ativos):
+        ativos = ativos[0] if type(ativos[0])==tuple else ativos
+        return self.__class__(list(ativos), np.column_stack([self.__dict__[i] for i in ativos]), self.ativo)
+
+    # Retorna os dados em numpy
+    def np(self, *features):
+        features = list(self.__dict__)[3:] if len(features)==0 else features
+        features = features[0] if type(features[0])==tuple else features     
+        return [[i for i in features], [np.column_stack([self.__dict__[i] for i in features])][0], self.ativo]
         
 
 # As classes abaixo buscam cotações históricas e intraday
@@ -288,53 +368,38 @@ class Series:
         self.__dataini=min(data1) if dataini == 0 else dataini
         self.__datafin=max(data1) if dataini == 0 else 20300101
         dados = self.__dados('interday')
-        hist = Serie(dados) if len(self.__papel)>1 else Features([dados[0], dados[1][0], dados[2][0]])
+        hist = Serie(dados) if len(self.__papel)>1 else Features_series([dados[0], dados[1][0], dados[2][0]])
         self.__dataini=20000101 
         self.__datafin=20300101
         return hist
 
     def intraday(self):
         dados = self.__dados('intraday')
-        return Serie(dados) if len(self.__papel)>1 else Features([dados[0], dados[1][0], dados[2][0]])
+        return Serie(dados) if len(self.__papel)>1 else Features_series([dados[0], dados[1][0], dados[2][0]])
         
         
-class Features:
-    def __init__(self, dados):    
-        self.__dados = np.array(dados[1])
-        self.__head = dados[0]
-        self.__ativo = dados[2]
-        for j, i in enumerate(self.__head):
-            setattr(self, i, [z[0] for z in self.__dados[:,[j]]])
 
-        
-    def __repr__(self):
-        ativos = list(self.__dict__)[3:]
-        return str(self.__ativo + '\n' + tabulate(np.concatenate(([ativos], np.column_stack([self.__dict__[i] for i in ativos])))))
 
-    def __getitem__(self, *ativos):
-        ativos = ativos[0] if type(ativos[0])==tuple else ativos
-        return Features([list(ativos), np.column_stack([self.__dict__[i] for i in ativos]), self.__ativo])
 
+class Features_series(Features):
+
+    def __init__(self, dados):
+        super().__init__(dados[0], dados[1], dados[2])
     # Gera a coluna de retornos dia a dia
     def gera_retornos(self):
         precos = self.__dict__['price']
-        dados, retornos = self.__dados, np.array([np.log(precos[i]/precos[i+1]) for i in range(len(precos[:-1]))])
-        return Features([list(self.__dict__)[3:]+['retornos'], np.column_stack([dados, np.append(retornos,0)]), self.__ativo]) 
+        dados, retornos = self.dados, np.array([np.log(precos[i]/precos[i+1]) for i in range(len(precos[:-1]))])
+        return self.__class__([list(self.__dict__)[3:]+['retornos'], np.column_stack([dados, np.append(retornos,0)]), self.ativo]) 
       
     # Gera coluna com as curvas moveis
     def curvas_moveis(self, n):
         precos = self.__dict__['price']
         curvas = [sum(precos[i:(i+n)])/len(precos[i:(i+n)]) for i in range(len(precos)-(n-1))]
         curvas = np.append(curvas, [0 for i in range(n-1)])
-        return Features([list(self.__dict__)[3:]+['curva_movel'], np.column_stack([self.__dados, curvas]), self.__ativo])      
+        return self.__class__([list(self.__dict__)[3:]+['curva_movel'], np.column_stack([self.dados, curvas]), self.ativo])      
         
       
-    # Retorna os dados em numpy
-    def np(self, *features):
-        features = list(self.__dict__)[3:] if len(features)==0 else features
-        features = features[0] if type(features[0])==tuple else features     
-        return [[i for i in features], [np.column_stack([self.__dict__[i] for i in features])][0], self.__ativo]
-        
+
     
 
 
@@ -346,7 +411,7 @@ class Serie:
         self.ativos = dados[2]
         
         for j, i in enumerate(self.ativos):
-            setattr(self, i, Features([self.head, self.dados[j], i]))
+            setattr(self, i, Features_series([self.head, self.dados[j], i]))
             
 
     def __repr__(self):
