@@ -207,7 +207,7 @@ class Balanco:
         campos = np.array(dados[0])
         contents = dados[1:]
         contents = np.array(contents, dtype=object)
-        contents[:,2] = [float(i.replace('.','').replace(',','.')) if i else None for i in contents[:,2]]
+        contents[:,2] = [float(i.replace('.','').replace(',','.'))*1000 if i else None for i in contents[:,2]]
         return [campos, contents]
         
     # Verifica os trimestre que o valor está consolidado
@@ -280,7 +280,7 @@ class Balanco:
             relat = self.balanco.relatorios[self.ano][self.tri]
             dataent = [relat[1] for i in valores]
             numrelat = [relat[2] for i in valores]
-            tabela.update({'dataent':['DATA_ENT', dataent], 'relat':['NUM_RELATORIO', numrelat]})
+            tabela.update({'dataent':['DATA_ENT', dataent], 'relat':['CD_RELATORIO', numrelat]})
 
         tabela1 =  tabela['ativo'][-1]
         colunas = tabela['ativo'][:-1]
