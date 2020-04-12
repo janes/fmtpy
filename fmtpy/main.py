@@ -7,7 +7,7 @@ import json
 from tabulate import tabulate
 from scipy.stats import norm
 from scipy.stats import pearsonr
-
+import datetime
 
 
 mes_trimestre = {
@@ -23,6 +23,10 @@ def ascii(str):
     [[a.update({j:'aeiouc'[n]}) for j in i] for n, i in enumerate(['áàâã','éê','í','óòôõ','ú','ç'])]
     nome = ''.join([a[i] if i in a else i for i in str])
     return nome
+
+# converte string para date
+def todate(data):
+    return datetime.datetime.strptime(data, "%d/%m/%Y").date()
 
 # Função para fazer obter o html do site da b3,
 # muitas vezes a página fica carregando muito tempo, é necessário recarregar algumas vezes até funcionar
@@ -260,8 +264,8 @@ class Balanco:
         datas = raw[0][2]
         if not self.ajustado:
             datas = raw[0][2].split('a')
-            datas = [datas for i in valores]
-            meses = [int(i.split('/')[1]) for i in datas[0]]
+            datas = [[todate(j) for j in datas] for i in valores]
+            meses = [i.month for i in datas[0]]
             trimestre = [int(i/3)+1 if i%3 else int(i/3) for i in meses]
             trimestre = [trimestre for i in valores]
             tabela.update({'dataref': ['DATA_REF_INI', 'DATA_REF_FIM', datas]})
@@ -291,7 +295,6 @@ class Balanco:
                 colunas += tabela[i][:-1]
                 tabela1 = np.column_stack([tabela1,tabela[i][-1]])
 
-
         return [colunas, tabela1]
 
 
@@ -303,8 +306,6 @@ class Features:
         self.ativo = nome
         for j, i in enumerate(self.head):
             setattr(self, i, [z[0] for z in self.dados[:,[j]]])
-
-
         
     def __repr__(self):
         ativos = list(self.__dict__)[3:]

@@ -61,7 +61,7 @@ class Raw:
         dats = relat['onmouseover']
         strm = 'MontaHint'
         tp = eval(dats[dats.find(strm)+len(strm):][:-2])
-        return [tp[0], tp[3][:10]]
+        return [main.todate(tp[0]), main.todate(tp[3][:10])]
         
     # busca no site da B3 as datas e números dos relatórios de um ano para um papel
     def relatorios_cvm(self, ano):
@@ -110,7 +110,7 @@ class Raw:
                 print('Número de tentativas excedidads para o site da B3!!')
                 
         
-        d = np.array([[mes_semestre[int(self.__datas(i)[0][3:5])]]+self.__datas(i)+[self.__num_doc(i)] for i in relatorios], dtype='object')
+        d = np.array([[mes_semestre[int(self.__datas(i)[0].month)]]+self.__datas(i)+[self.__num_doc(i)] for i in relatorios], dtype='object')
         # retorna os números dos relatórios do ano
         dic = dict(zip(d[:,0], d[:,[1,2,3]]))
         self.relatorios.update({ano:dic})
