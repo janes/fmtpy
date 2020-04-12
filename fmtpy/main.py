@@ -7,7 +7,7 @@ import json
 from tabulate import tabulate
 from scipy.stats import norm
 from scipy.stats import pearsonr
-import datetime
+from datetime import datetime
 
 
 mes_trimestre = {
@@ -26,7 +26,7 @@ def ascii(str):
 
 # converte string para date
 def todate(data):
-    return datetime.datetime.strptime(data, "%d/%m/%Y").date()
+    return datetime.strptime(data, "%d/%m/%Y").date()
 
 # Função para fazer obter o html do site da b3,
 # muitas vezes a página fica carregando muito tempo, é necessário recarregar algumas vezes até funcionar
@@ -273,7 +273,7 @@ class Balanco:
         else:
             trimestre = self.tri
             trimestre = [trimestre for i in valores]
-            datas = [datas for i in valores]
+            datas = [todate(datas) for i in valores]
             tabela.update({'dataref':['DATA_REF', datas]})
             tabela.update({'trimestre':['TRIMESTRE', trimestre]})
 
