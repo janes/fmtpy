@@ -308,7 +308,7 @@ class Features:
             setattr(self, i, [z[0] for z in self.dados[:,[j]]])
         
     def __repr__(self):
-        ativos = list(self.__dict__)[3:]
+        ativos = list(self.__dict__)[3:3+len(self.head)]
         return str(self.ativo + '\n' + tabulate(np.concatenate(([ativos], np.column_stack([self.__dict__[i] for i in ativos])))))
 
     def __getitem__(self, *ativos):
@@ -317,7 +317,7 @@ class Features:
 
     # Retorna os dados em numpy
     def np(self, *features):
-        features = list(self.__dict__)[3:] if len(features)==0 else features
+        features = list(self.__dict__)[3:3+len(self.head)] if len(features)==0 else features
         features = features[0] if type(features[0])==tuple else features     
         return [[i for i in features], [np.column_stack([self.__dict__[i] for i in features])][0], self.ativo]
         
@@ -369,14 +369,14 @@ class Series:
         self.__dataini=min(data1) if dataini == 0 else dataini
         self.__datafin=max(data1) if dataini == 0 else 20300101
         dados = self.__dados('interday')
-        hist = Serie(dados) if len(self.__papel)>1 else Features_series([dados[0], dados[1][0], dados[2][0]])
+        hist = Serie(dados) if len(self.__papel)>1 else Features_series(dados[0], dados[1][0], dados[2][0])
         self.__dataini=20000101 
         self.__datafin=20300101
         return hist
 
     def intraday(self):
         dados = self.__dados('intraday')
-        return Serie(dados) if len(self.__papel)>1 else Features_series([dados[0], dados[1][0], dados[2][0]])
+        return Serie(dados) if len(self.__papel)>1 else Features_series(dados[0], dados[1][0], dados[2][0])
         
         
 
@@ -384,20 +384,20 @@ class Series:
 
 class Features_series(Features):
 
-    def __init__(self, dados):
-        super().__init__(dados[0], dados[1], dados[2])
+    def __init__(self, head, dados, nome):
+        super().__init__(head, dados, nome)
     # Gera a coluna de retornos dia a dia
     def gera_retornos(self):
         precos = self.__dict__['price']
         dados, retornos = self.dados, np.array([np.log(precos[i]/precos[i+1]) for i in range(len(precos[:-1]))])
-        return self.__class__([list(self.__dict__)[3:]+['retornos'], np.column_stack([dados, np.append(retornos,0)]), self.ativo]) 
+        return self.__class__(list(self.__dict__)[3:]+['retornos'], np.column_stack([dados, np.append(retornos,0)]), self.ativo) 
       
     # Gera coluna com as curvas moveis
     def curvas_moveis(self, n):
         precos = self.__dict__['price']
         curvas = [sum(precos[i:(i+n)])/len(precos[i:(i+n)]) for i in range(len(precos)-(n-1))]
         curvas = np.append(curvas, [0 for i in range(n-1)])
-        return self.__class__([list(self.__dict__)[3:]+['curva_movel'], np.column_stack([self.dados, curvas]), self.ativo])      
+        return self.__class__(list(self.__dict__)[3:]+['curva_movel'], np.column_stack([self.dados, curvas]), self.ativo)      
         
       
 
@@ -412,7 +412,7 @@ class Serie:
         self.ativos = dados[2]
         
         for j, i in enumerate(self.ativos):
-            setattr(self, i, Features_series([self.head, self.dados[j], i]))
+            setattr(self, i, Features_series(self.head, self.dados[j], i))
             
 
     def __repr__(self):
