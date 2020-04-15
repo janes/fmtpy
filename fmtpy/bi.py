@@ -3,6 +3,8 @@ import sqlite3
 import numpy as np
 #from fmtpy import main
 import main
+#from fmtpy import cvmpy as cvm
+import cvmpy as cvm
 from datetime import datetime, date
 
 class sqlite:
@@ -53,6 +55,13 @@ class sqlite:
         self.cursor.execute(query)
         self.cnn.commit()
 
+    # Verifica se registros existem em uma tabela
+    def reg_existe(self, nome, **campos):
+        cond = [f"{i} = '{campos[i]}'" for i in campos]
+        cond = ' and '.join(cond)
+        query = f' select count(*) from {nome} where {cond}'
+        self.cursor.execute(query)
+        return self.cursor.fetchone()[0]
 
     # Exporta para o sql
     def to_sql(self, nome, campos, valores, seexiste='fail'):
@@ -72,13 +81,37 @@ class sqlite:
 
 
 
+
 class Features(main.Features):
 
     def __init__(self, head, dados, nome=''):
         super().__init__(head, dados, nome)
 
-    def to_sql(self, banco, replace=False):
-        banco
+    # no caso de replace, retorna os dados que serão deletados
+    def dictin(self, condicoes=False):
+        condicoes = condicoes if type(condicoes)==list else [condicoes]
+        return dict(zip(list(condicoes), [self.__dict__[i][0] for i in condicoes]))
+
+    # sobe os dados no sql, caso for sobrescrever os dados, inserir os campos chave no campos
+    def to_sql(self, tabela, cnn, campos=False):
+        # se não for sobrescrever, os dados não são adicionados se já existirem
+        if campos:
+            campos = self.dictin(condicoes=campos)
+            cnn.delete_from(tabela, **campos)
+
+        cnn.to_sql(tabela, self.head, self.dados, 'append')
+
+
+
+class Balancos(cvm.Balanco):
+    def __init__(self, papel, wdriver = 'chromedriver.exe'):
+        super().__init__(papel, wdriver)
+
+    def fat_balancos_cvm_trimestral(self):
+        pass
+
+    
+
 
 
 

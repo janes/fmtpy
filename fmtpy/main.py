@@ -305,7 +305,7 @@ class Features:
         self.head = head
         self.ativo = nome
         for j, i in enumerate(self.head):
-            setattr(self, i, [z[0] for z in self.dados[:,[j]]])
+            setattr(self, i, self.dados[:,j])
         
     def __repr__(self):
         ativos = list(self.__dict__)[3:3+len(self.head)]
@@ -318,8 +318,10 @@ class Features:
     # Retorna os dados em numpy
     def np(self, *features):
         features = list(self.__dict__)[3:3+len(self.head)] if len(features)==0 else features
-        features = features[0] if type(features[0])==tuple else features     
-        return [[i for i in features], [np.column_stack([self.__dict__[i] for i in features])][0], self.ativo]
+        features = features[0] if type(features[0])==tuple else features    
+        val = [np.column_stack([self.__dict__[i] for i in features])][0] if len(features)>1 else self.__dict__[features[0]]
+        features1 = [[i for i in features], val, self.ativo]
+        return features1
         
 
 # As classes abaixo buscam cotações históricas e intraday
