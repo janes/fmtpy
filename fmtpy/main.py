@@ -72,8 +72,8 @@ class Dados_B3:
     # Obtem o cnpj e isin
     def cnpj(self):
     
-        if '__cnpj' in self.__dict__:
-            return self.__dict__['__cnpj']
+        if 'cnpj' in self.__dict__:
+            return self.__dict__['cnpj']
 
         cd = self.cd_cvm()
 
@@ -87,7 +87,7 @@ class Dados_B3:
         cnpj = soup[2].text.split()[1]
 
         setattr(self, '__isin', isin)
-        setattr(self, '__cnpj', cnpj)
+        setattr(self, 'cnpj', cnpj)
 
         return cnpj
 
@@ -102,8 +102,8 @@ class Dados_B3:
     # Busca o nome da empresa listada na cvm e o código
     def cd_cvm(self):
 
-        if '__cd_cvm' in self.__dict__:
-            return self.__dict__['__cd_cvm']
+        if 'cd_cvm' in self.__dict__:
+            return self.__dict__['cd_cvm']
 
         url = f'http://bvmf.bmfbovespa.com.br/cias-listadas/empresas-listadas/BuscaEmpresaListada.aspx?Nome={self.papel}&idioma=pt-br'
         soup = bstimeout(url, 3)
@@ -111,7 +111,7 @@ class Dados_B3:
         codigo = codigo.find('td').find('a')['href']
         codigo[codigo.find('codigoCvm=')+len('codigoCvm='):]
         cd_cvm = int(codigo[codigo.find('codigoCvm=')+len('codigoCvm='):])
-        setattr(self, '__cd_cvm', cd_cvm)
+        setattr(self, 'cd_cvm', cd_cvm)
         return cd_cvm
 
 
@@ -124,14 +124,14 @@ class Dados:
 
     # Obtem o nome e cnpj da ação no site status invest
     def cnpj(self):
-        if '__cnpj' in self.__dict__:
-            return self.__dict__['__cnpj']
+        if 'cnpj' in self.__dict__:
+            return self.__dict__['cnpj']
         url = f"""https://statusinvest.com.br/acoes/"""+self.papel.lower()
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
         try:
             cnpj = soup.find('small', class_ = 'd-block fs-4 fw-100 lh-4').text
-            setattr(self, '__cnpj', cnpj)
+            setattr(self, 'cnpj', cnpj)
             return cnpj
         except:
             print('CNPJ não encontrado')   
@@ -141,7 +141,7 @@ class Dados:
         url='https://br.advfn.com/p.php?pid=qkquote&symbol='+self.papel.lower()
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
-        isin = soup.find(id = 'quoteElementPiece5').text 
+        isin = soup.find(id = 'quoteElementPiece6').text 
         setattr(self, '__isin', isin)
         return isin
         
@@ -151,7 +151,7 @@ class Dados:
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
         cd_cvm = soup.find(id = 'dlCiasCdCVM__ctl1_Linkbutton5').text  
-        setattr(self, '__cd_cvm', cd_cvm)   
+        setattr(self, 'cd_cvm', cd_cvm)   
         return int(cd_cvm)
 
 
@@ -255,9 +255,11 @@ class Balanco:
         valores = raw[1]
 
         ativo = [self.papel for i in valores]
+        indice = [self.ind for i in valores]
 
         tabela = {}
         tabela.update({'ativo':['CD_ATIVO', ativo]})
+        tabela.update({'indice':['IND', indice]})
         tabela.update({'conta':['CONTA', 'DS_CONTA', valores[:,[0,1]]], 'valor':['VALOR',valores[:,2]]})
         # adiciona outras colunas
         #encontra trimestre inicial e final
@@ -270,6 +272,8 @@ class Balanco:
             trimestre = [trimestre for i in valores]
             tabela.update({'dataref': ['DATA_REF_INI', 'DATA_REF_FIM', datas]})
             tabela.update({'trimestre': ['TRIMESTRE_INI', 'TRIMESTRE_FIM', trimestre]})
+            # salvando para a tabela de relatorios
+            self.datas, self.trimestres = datas[0], trimestre[0]
         else:
             trimestre = self.tri
             trimestre = [trimestre for i in valores]
@@ -290,7 +294,7 @@ class Balanco:
         colunas = tabela['ativo'][:-1]
 
         # Gera a tabela final
-        for i in ['conta', 'relat', 'dataent', 'dataref', 'ano', 'trimestre', 'valor']:
+        for i in ['indice','conta', 'relat', 'dataent', 'dataref', 'ano', 'trimestre', 'valor']:
             if i in tabela:
                 colunas += tabela[i][:-1]
                 tabela1 = np.column_stack([tabela1,tabela[i][-1]])

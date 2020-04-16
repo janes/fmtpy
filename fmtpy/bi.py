@@ -107,14 +107,36 @@ class Balancos(cvm.Balanco):
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         super().__init__(papel, wdriver)
 
-    def fat_balancos_cvm_trimestral(self):
-        pass
+    def fat_balancos_cvm_desagregado(self, ind, ano, tri):
+        return self.get(ind,ano,tri,True)
 
-    
+    def fat_balancos_cvm_agregado(self, ind, ano, tri):
+        return self.get(ind,ano,tri,False)
+
+    def dim_ativo(self):
+        tb_ativo=[['CD_ATIVO','CD_CVM','CNPJ','ISIN'],
+        np.array([[self.papel, self.balanco.dados.cd_cvm,
+        self.balanco.dados.cnpj,
+        self.balanco.dados.isin()]])]
+        return tb_ativo
+
+    def dim_relatorios(self):
+        relat = self.balanco.relatorios[self.ano]
+        relatorios = np.array([list(relat[i]) for i in relat])
+        relatorios = np.column_stack([relatorios, list(relat)])
+        relatorios = np.column_stack([relatorios, [self.ano for i in list(relat)]])
+        relatorios = np.column_stack([relatorios, [self.papel for i in list(relat)]])
+
+        tb_relatorio = [['DATA_REF','DATA_ENT','CD_RELATORIO','TRIMESTRE', 'ANO', 'CD_ATIVO'], relatorios]
+        tb_relatorio = Features(tb_relatorio[0], tb_relatorio[1])\
+            ['CD_ATIVO', 'CD_RELATORIO', 'ANO', 'TRIMESTRE', 'DATA_REF', 'DATA_ENT']
+
+        return tb_relatorio.np()[:2]
 
 
-
-
-
-
+    def dim_relatorios_datas_aggs(self, ind, ano, tri):
+        relat = self.balanco.relatorios[self.ano]
+        relat = [['CD_ATIVO', 'CD_RELATORIO', 'ANO', 'TRIMESTRE_INI', 'TRIMESTRE_FIM', 'DATA_REF_INI', 'DATA_REF_FIM'],
+                    np.array([[self.papel,self.balanco.relatorios[self.ano][self.tri][2], self.ano] + self.trimestres + self.datas])]
+        return relat
 

@@ -128,7 +128,7 @@ class Raw:
         driver = webdriver.Chrome(self.wdriver, chrome_options=options)
         # instanciar
         #driver.set_page_load_timeout(8)
-
+        
         url = f'http://www.rad.cvm.gov.br/ENETCONSULTA/frmGerenciaPaginaFRE.aspx?NumeroSequencialDocumento={num}&CodigoTipoInstituicao=2'
         driver.get(url)
         
