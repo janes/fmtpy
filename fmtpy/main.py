@@ -151,7 +151,7 @@ class Dados:
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
         cd_cvm = soup.find(id = 'dlCiasCdCVM__ctl1_Linkbutton5').text  
-        setattr(self, 'cd_cvm', cd_cvm)   
+        setattr(self, 'cd_cvm', int(cd_cvm))   
         return int(cd_cvm)
 
 
@@ -163,6 +163,7 @@ class Raw:
         self.dados = Dados(self.papel)
         self.isin = self.dados.isin()
         self.series = {}
+        
         
     def raw(self, ind, ano, tri):
     
@@ -204,6 +205,7 @@ class Balanco:
         self.papel=papel
         self.site = site
         self.balanco = Raw(self.papel) if site else None
+        self.datarefs = {}
 
 
     # Transforma os valores em float
@@ -254,11 +256,11 @@ class Balanco:
         raw = self.raw()
         valores = raw[1]
 
-        ativo = [self.papel for i in valores]
+        cdcvm = [self.balanco.dados.cd_cvm for i in valores]
         indice = [self.ind for i in valores]
 
         tabela = {}
-        tabela.update({'ativo':['CD_ATIVO', ativo]})
+        tabela.update({'cdcvm':['CD_CVM', cdcvm]})
         tabela.update({'indice':['IND', indice]})
         tabela.update({'conta':['CONTA', 'DS_CONTA', valores[:,[0,1]]], 'valor':['VALOR',valores[:,2]]})
         # adiciona outras colunas
@@ -270,10 +272,13 @@ class Balanco:
             meses = [i.month for i in datas[0]]
             trimestre = [int(i/3)+1 if i%3 else int(i/3) for i in meses]
             trimestre = [trimestre for i in valores]
-            tabela.update({'dataref': ['DATA_REF_INI', 'DATA_REF_FIM', datas]})
-            tabela.update({'trimestre': ['TRIMESTRE_INI', 'TRIMESTRE_FIM', trimestre]})
+            tabela.update({'dataref': ['DATA_REF_INI', 'DATA_REF_FIN', datas]})
+            tabela.update({'trimestre': ['TRIMESTRE_INI', 'TRIMESTRE_FIN', trimestre]})
             # salvando para a tabela de relatorios
-            self.datas, self.trimestres = datas[0], trimestre[0]
+            self.datarefs.update({(self.ind, self.ano, self.tri) : [self.balanco.dados.cd_cvm, self.ind,
+                self.balanco.relatorios[self.ano][self.tri][2], self.ano]+datas[0]+trimestre[0]})
+
+
         else:
             trimestre = self.tri
             trimestre = [trimestre for i in valores]
@@ -290,11 +295,11 @@ class Balanco:
             numrelat = [relat[2] for i in valores]
             tabela.update({'dataent':['DATA_ENT', dataent], 'relat':['CD_RELATORIO', numrelat]})
 
-        tabela1 =  tabela['ativo'][-1]
-        colunas = tabela['ativo'][:-1]
+        tabela1 =  tabela['cdcvm'][-1]
+        colunas = tabela['cdcvm'][:-1]
 
         # Gera a tabela final
-        for i in ['indice','conta', 'relat', 'dataent', 'dataref', 'ano', 'trimestre', 'valor']:
+        for i in ['indice', 'relat', 'conta', 'dataent', 'dataref', 'ano', 'trimestre', 'valor']:
             if i in tabela:
                 colunas += tabela[i][:-1]
                 tabela1 = np.column_stack([tabela1,tabela[i][-1]])

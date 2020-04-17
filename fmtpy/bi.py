@@ -80,8 +80,6 @@ class sqlite:
 
 
 
-
-
 class Features(main.Features):
 
     def __init__(self, head, dados, nome=''):
@@ -93,29 +91,33 @@ class Features(main.Features):
         return dict(zip(list(condicoes), [self.__dict__[i][0] for i in condicoes]))
 
     # sobe os dados no sql, caso for sobrescrever os dados, inserir os campos chave no campos
-    def to_sql(self, tabela, cnn, campos=False):
-        # se não for sobrescrever, os dados não são adicionados se já existirem
-        if campos:
+    def to_sql(self, tabela, cnn, campos=False, sobrescrever=True):
+        if campos and cnn.table_exist(tabela):
             campos = self.dictin(condicoes=campos)
-            cnn.delete_from(tabela, **campos)
-
+            if sobrescrever:
+                cnn.delete_from(tabela, **campos)
+            elif cnn.reg_existe(tabela, **campos):
+                return
+        print(1)
         cnn.to_sql(tabela, self.head, self.dados, 'append')
 
 
-
+# Gera as tabelas no layout para o banco de dados
 class Balancos(cvm.Balanco):
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         super().__init__(papel, wdriver)
 
     def fat_balancos_cvm_desagregado(self, ind, ano, tri):
-        return self.get(ind,ano,tri,True)
+        tabela = self.get(ind,ano,tri,True)
+        return Features(tabela[0], tabela[1])['CD_CVM', 'IND', 'CD_RELATORIO', 'CONTA', 'VALOR'].np()[:2]
 
     def fat_balancos_cvm_agregado(self, ind, ano, tri):
-        return self.get(ind,ano,tri,False)
+        tabela = self.get(ind,ano,tri,False)
+        return Features(tabela[0], tabela[1])['CD_CVM', 'IND', 'CD_RELATORIO', 'CONTA', 'VALOR'].np()[:2]
 
     def dim_ativo(self):
-        tb_ativo=[['CD_ATIVO','CD_CVM','CNPJ','ISIN'],
-        np.array([[self.papel, self.balanco.dados.cd_cvm,
+        tb_ativo=[['CD_CVM','CD_ATIVO','CNPJ','ISIN'],
+        np.array([[self.balanco.dados.cd_cvm, self.papel,
         self.balanco.dados.cnpj,
         self.balanco.dados.isin()]])]
         return tb_ativo
@@ -125,18 +127,39 @@ class Balancos(cvm.Balanco):
         relatorios = np.array([list(relat[i]) for i in relat])
         relatorios = np.column_stack([relatorios, list(relat)])
         relatorios = np.column_stack([relatorios, [self.ano for i in list(relat)]])
-        relatorios = np.column_stack([relatorios, [self.papel for i in list(relat)]])
+        relatorios = np.column_stack([relatorios, [self.balanco.dados.cd_cvm for i in list(relat)]])
 
-        tb_relatorio = [['DATA_REF','DATA_ENT','CD_RELATORIO','TRIMESTRE', 'ANO', 'CD_ATIVO'], relatorios]
+        tb_relatorio = [['DATA_REF','DATA_ENT','CD_RELATORIO','TRIMESTRE', 'ANO', 'CD_CVM'], relatorios]
         tb_relatorio = Features(tb_relatorio[0], tb_relatorio[1])\
-            ['CD_ATIVO', 'CD_RELATORIO', 'ANO', 'TRIMESTRE', 'DATA_REF', 'DATA_ENT']
+            ['CD_CVM', 'CD_RELATORIO', 'ANO', 'TRIMESTRE', 'DATA_REF', 'DATA_ENT']
 
         return tb_relatorio.np()[:2]
 
 
     def dim_relatorios_datas_aggs(self, ind, ano, tri):
-        relat = self.balanco.relatorios[self.ano]
-        relat = [['CD_ATIVO', 'CD_RELATORIO', 'ANO', 'TRIMESTRE_INI', 'TRIMESTRE_FIM', 'DATA_REF_INI', 'DATA_REF_FIM'],
-                    np.array([[self.papel,self.balanco.relatorios[self.ano][self.tri][2], self.ano] + self.trimestres + self.datas])]
-        return relat
+        return [['CD_CVM', 'IND', 'CD_RELATORIO', 'ANO','DATA_REF_INI', 
+                'DATA_REF_FIN', 'TRIMESTRE_INI', 'TRIMESTRE_FIN'],
+                        np.array([self.datarefs[(ind, ano, tri)]])]
+
+
+
+
+class upload:
+    def __init__(self, cnn, acao, anos, wdriver = 'chromedriver.exe'):
+        self.cnn = cnn
+        self.wdriver = wdriver
+        self.acao = acao if type(acao)==list else acao
+        self.anos = anos if type(anos)==list else anos
+
+    def go(self):
+        for i in self.anos:
+            balanco = bi.Balancos(self.acao[0],self.driver)
+            for i in range(1,5):
+                for i in indice_ind:
+                    
+    def input(balanco, )
+
+
+
+
 
