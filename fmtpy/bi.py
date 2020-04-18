@@ -98,7 +98,6 @@ class Features(main.Features):
                 cnn.delete_from(tabela, **campos)
             elif cnn.reg_existe(tabela, **campos):
                 return
-        print(1)
         cnn.to_sql(tabela, self.head, self.dados, 'append')
 
 
@@ -109,18 +108,18 @@ class Balancos(cvm.Balanco):
 
     def fat_balancos_cvm_desagregado(self, ind, ano, tri):
         tabela = self.get(ind,ano,tri,True)
-        return Features(tabela[0], tabela[1])['CD_CVM', 'IND', 'CD_RELATORIO', 'CONTA', 'VALOR'].np()[:2]
+        return Features(tabela[0], tabela[1])['CD_CVM', 'IND', 'CD_RELATORIO', 'CONTA', 'VALOR']
 
     def fat_balancos_cvm_agregado(self, ind, ano, tri):
         tabela = self.get(ind,ano,tri,False)
-        return Features(tabela[0], tabela[1])['CD_CVM', 'IND', 'CD_RELATORIO', 'CONTA', 'VALOR'].np()[:2]
+        return Features(tabela[0], tabela[1])['CD_CVM', 'IND', 'CD_RELATORIO', 'CONTA', 'VALOR']
 
     def dim_ativo(self):
         tb_ativo=[['CD_CVM','CD_ATIVO','CNPJ','ISIN'],
         np.array([[self.balanco.dados.cd_cvm, self.papel,
         self.balanco.dados.cnpj,
         self.balanco.dados.isin()]])]
-        return tb_ativo
+        return Features(tb_ativo[0], tb_ativo[1])
 
     def dim_relatorios(self):
         relat = self.balanco.relatorios[self.ano]
@@ -133,31 +132,50 @@ class Balancos(cvm.Balanco):
         tb_relatorio = Features(tb_relatorio[0], tb_relatorio[1])\
             ['CD_CVM', 'CD_RELATORIO', 'ANO', 'TRIMESTRE', 'DATA_REF', 'DATA_ENT']
 
-        return tb_relatorio.np()[:2]
+        return tb_relatorio
 
 
     def dim_relatorios_datas_aggs(self, ind, ano, tri):
-        return [['CD_CVM', 'IND', 'CD_RELATORIO', 'ANO','DATA_REF_INI', 
+        tb_relatorio = [['CD_CVM', 'IND', 'CD_RELATORIO', 'ANO','DATA_REF_INI', 
                 'DATA_REF_FIN', 'TRIMESTRE_INI', 'TRIMESTRE_FIN'],
                         np.array([self.datarefs[(ind, ano, tri)]])]
 
+        return Features(tb_relatorio[0], tb_relatorio[1])
 
 
 
-class upload:
+
+class Upload:
     def __init__(self, cnn, acao, anos, wdriver = 'chromedriver.exe'):
         self.cnn = cnn
         self.wdriver = wdriver
-        self.acao = acao if type(acao)==list else acao
-        self.anos = anos if type(anos)==list else anos
+        self.acao = acao if type(acao)==list else [acao]
+        self.anos = anos if type(anos)==list else [anos]
 
     def go(self):
-        for i in self.anos:
-            balanco = bi.Balancos(self.acao[0],self.driver)
-            for i in range(1,5):
-                for i in indice_ind:
+        self.balanco = Balancos(self.acao[0],self.wdriver)
+        for ano in self.anos:
+            if self.balanco.balanco.relatorios_cvm(ano):
+                for tri in [i for i in self.balanco.balanco.relatorios[ano]]:
+                    for ind in main.indice_ind:
+                        self.input(ind, ano, tri)
+            
                     
-    def input(balanco, )
+    def input(self, ind, ano, tri):
+        
+        for i in ['fat_balancos_cvm_agregado', 'fat_balancos_cvm_desagregado', 'dim_relatorios_datas_aggs']:
+            if not self.cnn.table_exist(i) or \
+            not self.cnn.reg_existe(i, 
+                    CD_CVM=self.balanco.balanco.cd_cvm, IND=ind, 
+                    CD_RELATORIO=self.balanco.balanco.relatorios[ano][tri][2]):
+
+                exec(f"""self.balanco.{i}(ind, ano, tri).to_sql(i,self.cnn, campos=['CD_CVM', 'IND', 'CD_RELATORIO'])""")
+
+ 
+
+
+
+
 
 
 

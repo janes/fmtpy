@@ -71,8 +71,6 @@ class Raw:
         
         url = f'http://bvmf.bmfbovespa.com.br/cias-listadas/empresas-listadas/ResumoDemonstrativosFinanceiros.aspx?codigoCvm={self.cd_cvm}&idioma=pt-br'
         
-        
-
         for i in range(20):
             soup = main.bstimeout(url, 10)
   
@@ -83,7 +81,10 @@ class Raw:
                 break
             elif i==19:
                 print('Número de tentativas excedidads para o site da B3!!')
-                
+
+        anos = soup.find(id='ctl00_contentPlaceHolderConteudo_cmbAno').find_all('option')
+        if str(ano) not in [i.text for i in anos]:
+            return False
 
         viewstate = viewstate['value']
         eventval = eventval['value']

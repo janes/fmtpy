@@ -59,7 +59,7 @@ trimestre = {
 }
 
 indice_ind = {
-1:'Resultado', 2:'Balanço Ativo', 3:'Balanço Passivo', 4:'Resultado Abrangente', 5:'Fluxo de Caixa', 6:'Valor Adicionado', 7:'Mutações do PL'
+1:'Resultado', 2:'Balanço Ativo', 3:'Balanço Passivo', 4:'Resultado Abrangente', 5:'Fluxo de Caixa', 6:'Valor Adicionado'#, 7:'Mutações do PL'
 }
 
 # Busca o codigo cvm, cnpj e isin usando o site da B3, 
@@ -252,7 +252,7 @@ class Balanco:
     # Monta o layout da tabela
     def get(self, ind, ano, tri, ajustado=True):
         self.ind, self.ano, self.tri, self.ajustado = ind, ano, tri, ajustado
-        print(f'Obtendo {indice_ind[self.ind]} para {self.papel} referente ao {self.tri}º trimestre de {self.ano}')
+       # print(f'Obtendo {indice_ind[self.ind]} para {self.papel} referente ao {self.tri}º trimestre de {self.ano}')
         raw = self.raw()
         valores = raw[1]
 
@@ -268,7 +268,9 @@ class Balanco:
         datas = raw[0][2]
         if not self.ajustado:
             datas = raw[0][2].split('a')
-            datas = [[todate(j) for j in datas] for i in valores]
+            datas = [todate(i) for i in datas]
+            datas = [min(datas), max(datas)]
+            datas = [datas for i in valores]
             meses = [i.month for i in datas[0]]
             trimestre = [int(i/3)+1 if i%3 else int(i/3) for i in meses]
             trimestre = [trimestre for i in valores]
