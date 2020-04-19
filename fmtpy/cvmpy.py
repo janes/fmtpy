@@ -17,9 +17,6 @@ options.add_argument("--headless")
 headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 
-mes_semestre = {
-3:1, 6:2, 9:3, 12:4
-}
 
 # links cvm
 
@@ -52,7 +49,6 @@ class Raw:
     # Extrai o número do relatório do script da B3
     def __num_doc(self, href):  
         strn = 'NumeroSequencialDocumento='
-        href = href['href']
         href = href[href.find(strn)+len(strn):]
         return int(href[:href.find('&')])
 
@@ -64,14 +60,15 @@ class Raw:
         return [main.todate(tp[0]), main.todate(tp[3][:10])]
         
     # busca no site da B3 as datas e números dos relatórios de um ano para um papel
-    def relatorios_cvm(self, ano):
+    def relatorios_cvm_b3(self, ano):
         # Verifica se o ano já foi pesquisado antes para esse objeto
         if ano in self.relatorios:
             return self.relatorios[ano]
-        
+        print(0)
         url = f'http://bvmf.bmfbovespa.com.br/cias-listadas/empresas-listadas/ResumoDemonstrativosFinanceiros.aspx?codigoCvm={self.cd_cvm}&idioma=pt-br'
         
         for i in range(20):
+            print(1)
             soup = main.bstimeout(url, 10)
   
             viewstate = soup.find('input', id='__VIEWSTATE')
@@ -111,12 +108,59 @@ class Raw:
                 print('Número de tentativas excedidads para o site da B3!!')
                 
         
-        d = np.array([[mes_semestre[int(self.__datas(i)[0].month)]]+self.__datas(i)+[self.__num_doc(i)] for i in relatorios], dtype='object')
+        d = np.array([[int(self.__datas(i)[0].month/3)]+self.__datas(i)+[self.__num_doc(i['href'])] for i in relatorios], dtype='object')
         # retorna os números dos relatórios do ano
         dic = dict(zip(d[:,0], d[:,[1,2,3]]))
         self.relatorios.update({ano:dic})
         return dic
         
+    def relatorios_cvm(self, ano):
+        # Verifica se o ano já foi pesquisado antes para esse objeto
+        if ano in self.relatorios:
+            return self.relatorios[ano]
+        driver = webdriver.Chrome(self.wdriver, chrome_options=options)
+        url = 'https://www.rad.cvm.gov.br/ENET/frmConsultaExternaCVM.aspx?tipoconsulta=CVM&codigoCVM='+str(self.cd_cvm)
+
+        driver.get(url)
+        time.sleep(3)
+
+        driver.find_element_by_id('rdPeriodo').click()
+        time.sleep(3)
+
+        dataini = driver.find_element_by_id('txtDataIni')
+        dataini.clear()
+        dataini.send_keys('0101'+str(ano))
+        datafim = driver.find_element_by_id('txtDataFim')
+        datafim.clear()
+        datafim.send_keys('3112'+str(ano+1))
+
+        d=[]
+        for s in ['ITR', 'DFP']:
+            driver.find_element_by_id('cboCategoria_chosen_input').send_keys(s)
+            driver.find_element_by_id('cboCategoria_chosen_input').send_keys(Keys.RETURN)
+            driver.find_element_by_id('btnConsulta').click()
+            time.sleep(3)
+            soup = BeautifulSoup(driver.page_source, 'html.parser')
+            relat = soup.find(id='grdDocumentos').find('tbody')
+            relat = [[i.text for i in j.find_all('td')[:-1]]+[self.__num_doc(j.find_all('td')[-1:][0].find('i')['onclick'])] for j in relat.find_all('tr')]
+           
+            relat = np.array([i for i in relat if i[7]=='Ativo' and main.todate(i[5].split()[1]).year==ano], dtype=object)[:,[5,6,10]]
+            for c in [0,1]:
+                relat[:,c]=[main.todate(i.split()[1]) for i in relat[:,c]]
+
+            d.append(np.column_stack([[int(i[0].month/3) for i in relat], relat]))
+
+            driver.find_element_by_id('textoDivPesquisa').click()
+            time.sleep(2)
+
+        d = np.concatenate(d)
+        dic = dict(zip(d[:,0], d[:,[1,2,3]]))
+        self.relatorios.update({ano:dic})
+        return dic
+
+
+
+
     def raw(self, ind, ano, tri):
     
         link = link_ind[indice_ind[ind]] if type(ind)==int else link_ind[ind]
