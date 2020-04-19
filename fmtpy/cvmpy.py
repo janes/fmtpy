@@ -127,12 +127,12 @@ class Raw:
         driver.find_element_by_id('rdPeriodo').click()
         time.sleep(3)
 
-        dataini = driver.find_element_by_id('txtDataIni')
-        dataini.clear()
-        dataini.send_keys('0101'+str(ano))
-        datafim = driver.find_element_by_id('txtDataFim')
-        datafim.clear()
-        datafim.send_keys('3112'+str(ano+1))
+        #dataini = driver.find_element_by_id('txtDataIni')
+        #dataini.clear()
+        #dataini.send_keys('0101'+str(ano))
+        #datafim = driver.find_element_by_id('txtDataFim')
+        #datafim.clear()
+        #datafim.send_keys('3112'+str(ano+1))
 
         d=[]
         for s in ['ITR', 'DFP']:
@@ -143,20 +143,22 @@ class Raw:
             soup = BeautifulSoup(driver.page_source, 'html.parser')
             relat = soup.find(id='grdDocumentos').find('tbody')
             relat = [[i.text for i in j.find_all('td')[:-1]]+[self.__num_doc(j.find_all('td')[-1:][0].find('i')['onclick'])] for j in relat.find_all('tr')]
-           
-            relat = np.array([i for i in relat if i[7]=='Ativo' and main.todate(i[5].split()[1]).year==ano], dtype=object)[:,[5,6,10]]
-            for c in [0,1]:
-                relat[:,c]=[main.todate(i.split()[1]) for i in relat[:,c]]
+            relat = [i for i in relat if i[7]=='Ativo' and main.todate(i[5].split()[1]).year==ano]
+            if len(relat)>0:
+                relat = np.array(relat, dtype=object)[:,[5,6,10]]
+                for c in [0,1]:
+                    relat[:,c]=[main.todate(i.split()[1]) for i in relat[:,c]]
 
-            d.append(np.column_stack([[int(i[0].month/3) for i in relat], relat]))
+                d.append(np.column_stack([[int(i[0].month/3) for i in relat], relat]))
 
             driver.find_element_by_id('textoDivPesquisa').click()
             time.sleep(2)
 
-        d = np.concatenate(d)
-        dic = dict(zip(d[:,0], d[:,[1,2,3]]))
-        self.relatorios.update({ano:dic})
-        return dic
+        if len(d)>0:
+            d = np.concatenate(d)
+            dic = dict(zip(d[:,0], d[:,[1,2,3]]))
+            self.relatorios.update({ano:dic})
+            return dic
 
 
 

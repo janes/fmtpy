@@ -108,10 +108,16 @@ class Balancos(cvm.Balanco):
 
     def fat_balancos_cvm_desagregado(self, ind, ano, tri):
         tabela = self.get(ind,ano,tri,True)
+        tabela[0]+=['CD_CVM']
+        tabela[1][:,1]=[ind for i in tabela[1]]
+        tabela[1] = np.column_stack([tabela[1], [self.balanco.dados.cd_cvm for i in tabela[1]]])
         return Features(tabela[0], tabela[1])['CD_CVM', 'IND', 'CD_RELATORIO', 'CONTA', 'VALOR']
 
     def fat_balancos_cvm_agregado(self, ind, ano, tri):
         tabela = self.get(ind,ano,tri,False)
+        tabela[0]+=['CD_CVM']
+        tabela[1][:,1]=[ind for i in tabela[1]]
+        tabela[1] = np.column_stack([tabela[1], [self.balanco.dados.cd_cvm for i in tabela[1]]])
         return Features(tabela[0], tabela[1])['CD_CVM', 'IND', 'CD_RELATORIO', 'CONTA', 'VALOR']
 
     def dim_ativo(self):

@@ -256,11 +256,15 @@ class Balanco:
         raw = self.raw()
         valores = raw[1]
 
-        cdcvm = [self.balanco.dados.cd_cvm for i in valores]
-        indice = [self.ind for i in valores]
+      #  cdcvm = [self.balanco.dados.cd_cvm for i in valores]
+      #  indice = [self.ind for i in valores]
+
+        ativo = [self.papel for i in valores]
+        indice = [indice_ind[self.ind] for i in valores]
 
         tabela = {}
-        tabela.update({'cdcvm':['CD_CVM', cdcvm]})
+       # tabela.update({'cdcvm':['CD_CVM', cdcvm]})
+        tabela.update({'cdcvm':['CD_ATIVO', ativo]})
         tabela.update({'indice':['IND', indice]})
         tabela.update({'conta':['CONTA', 'DS_CONTA', valores[:,[0,1]]], 'valor':['VALOR',valores[:,2]]})
         # adiciona outras colunas
@@ -277,7 +281,8 @@ class Balanco:
             tabela.update({'dataref': ['DATA_REF_INI', 'DATA_REF_FIN', datas]})
             tabela.update({'trimestre': ['TRIMESTRE_INI', 'TRIMESTRE_FIN', trimestre]})
             # salvando para a tabela de relatorios
-            self.datarefs.update({(self.ind, self.ano, self.tri) : [self.balanco.dados.cd_cvm, self.ind,
+            if not self.site:
+                self.datarefs.update({(self.ind, self.ano, self.tri) : [self.balanco.dados.cd_cvm, self.ind,
                 self.balanco.relatorios[self.ano][self.tri][2], self.ano]+datas[0]+trimestre[0]})
 
 
