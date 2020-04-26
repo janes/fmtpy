@@ -11,9 +11,9 @@ import main
 
 
 options = webdriver.ChromeOptions()
-options.add_argument("--headless")
-#--start-maximized
-# --headless
+#options.add_argument("--headless")
+options.add_argument("--start-maximized")
+
 headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 
@@ -41,7 +41,6 @@ class Raw:
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         self.papel = papel
         self.dados = main.Dados(self.papel)
-        self.cd_cvm = self.dados.cd_cvm()
         self.wdriver = wdriver
         self.relatorios = {}
         self.series = {}
@@ -64,8 +63,8 @@ class Raw:
         # Verifica se o ano já foi pesquisado antes para esse objeto
         if ano in self.relatorios:
             return self.relatorios[ano]
-        print(0)
-        url = f'http://bvmf.bmfbovespa.com.br/cias-listadas/empresas-listadas/ResumoDemonstrativosFinanceiros.aspx?codigoCvm={self.cd_cvm}&idioma=pt-br'
+        self.cd_cvm_ = self.dados.cd_cvm()
+        url = f'http://bvmf.bmfbovespa.com.br/cias-listadas/empresas-listadas/ResumoDemonstrativosFinanceiros.aspx?codigoCvm={self.cd_cvm_}&idioma=pt-br'
         
         for i in range(20):
             print(1)
@@ -114,12 +113,16 @@ class Raw:
         self.relatorios.update({ano:dic})
         return dic
         
-    def relatorios_cvm(self, ano):
+    def relatorios_cvm(self, ano=False):
         # Verifica se o ano já foi pesquisado antes para esse objeto
-        if ano in self.relatorios:
+        if ano and ano in self.relatorios:
             return self.relatorios[ano]
+        elif len(self.relatorios):
+            return
+
+        self.cd_cvm_ = self.dados.cd_cvm()
         driver = webdriver.Chrome(self.wdriver, chrome_options=options)
-        url = 'https://www.rad.cvm.gov.br/ENET/frmConsultaExternaCVM.aspx?tipoconsulta=CVM&codigoCVM='+str(self.cd_cvm)
+        url = 'https://www.rad.cvm.gov.br/ENET/frmConsultaExternaCVM.aspx?tipoconsulta=CVM&codigoCVM='+str(self.cd_cvm_)
 
         driver.get(url)
         time.sleep(3)
@@ -127,9 +130,9 @@ class Raw:
         driver.find_element_by_id('rdPeriodo').click()
         time.sleep(3)
 
-        #dataini = driver.find_element_by_id('txtDataIni')
-        #dataini.clear()
-        #dataini.send_keys('0101'+str(ano))
+        dataini = driver.find_element_by_id('txtDataIni')
+        dataini.clear()
+        dataini.send_keys('01012011')
         #datafim = driver.find_element_by_id('txtDataFim')
         #datafim.clear()
         #datafim.send_keys('3112'+str(ano+1))
@@ -143,7 +146,9 @@ class Raw:
             soup = BeautifulSoup(driver.page_source, 'html.parser')
             relat = soup.find(id='grdDocumentos').find('tbody')
             relat = [[i.text for i in j.find_all('td')[:-1]]+[self.__num_doc(j.find_all('td')[-1:][0].find('i')['onclick'])] for j in relat.find_all('tr')]
-            relat = [i for i in relat if i[7]=='Ativo' and main.todate(i[5].split()[1]).year==ano]
+            
+       #     relat = [i for i in relat if i[7]=='Ativo' and main.todate(i[5].split()[1]).year==ano]
+            relat = [i for i in relat if i[7]=='Ativo']
             if len(relat)>0:
                 relat = np.array(relat, dtype=object)[:,[5,6,10]]
                 for c in [0,1]:
@@ -154,13 +159,16 @@ class Raw:
             driver.find_element_by_id('textoDivPesquisa').click()
             time.sleep(2)
 
+        d=np.concatenate(d)
+        driver.close()
         if len(d)>0:
-            d = np.concatenate(d)
-            dic = dict(zip(d[:,0], d[:,[1,2,3]]))
-            self.relatorios.update({ano:dic})
-            return dic
-
-
+            dic = {}
+            for y in list(set([i.year for i in d[:,1]])):
+                a = np.array([i for i in d if i[1].year==y])
+                dic.update({y:dict(zip(a[:,0], a[:,[1,2,3]]))})
+            self.relatorios.update(dic)
+            if ano:
+                return dic[ano]
 
 
     def raw(self, ind, ano, tri):
@@ -177,14 +185,15 @@ class Raw:
         #driver.set_page_load_timeout(8)
         
         url = f'http://www.rad.cvm.gov.br/ENETCONSULTA/frmGerenciaPaginaFRE.aspx?NumeroSequencialDocumento={num}&CodigoTipoInstituicao=2'
+ #       print(url)
+ #       print(link+str(num))
         driver.get(url)
         
         url=link+str(num)
         driver.get(url)
         response = driver.execute_script("return document.getElementsByTagName('html')[0].innerHTML")
         soup = BeautifulSoup(response)
-        tabela = soup.find('tbody').findAll('tr')
-        
+        tabela = soup.find('tbody').findAll('tr')        
         driver.close()
         tabela = [[i.text.replace('\xa0','') if i.text.replace('\xa0','') not in ('','0') else None for i in j.find_all('td')[:3]] for j in tabela]
         self.series.update({(ind, ano, tri):tabela})   

@@ -1,6 +1,7 @@
 import main
 import sqlite3
 import numpy as np
+import pandas as pd
 #from fmtpy import main
 import main
 #from fmtpy import cvmpy as cvm
@@ -57,6 +58,8 @@ class sqlite:
 
     # Verifica se registros existem em uma tabela
     def reg_existe(self, nome, **campos):
+        if not self.table_exist(nome):
+            return 0
         cond = [f"{i} = '{campos[i]}'" for i in campos]
         cond = ' and '.join(cond)
         query = f' select count(*) from {nome} where {cond}'
@@ -100,88 +103,157 @@ class Features(main.Features):
                 return
         cnn.to_sql(tabela, self.head, self.dados, 'append')
 
+    def df(self):
+        tabela = self.np()
+        return pd.DataFrame(tabela[1], columns=tabela[0])
 
-# Gera as tabelas no layout para o banco de dados
-class Balancos(cvm.Balanco):
-    def __init__(self, papel, wdriver = 'chromedriver.exe'):
-        super().__init__(papel, wdriver)
 
-    def fat_balancos_cvm_desagregado(self, ind, ano, tri):
+
+
+# Gera as tabelas no layout para o banco de dados pelo site Invest
+class BalancosInv(main.Balanco):
+
+    def __init__(self, papel):
+        super().__init__(papel)
+
+    def fat_balancos_desagregado(self, ind, ano, tri, sk):
         tabela = self.get(ind,ano,tri,True)
-        tabela[0]+=['CD_CVM']
-        tabela[1][:,1]=[ind for i in tabela[1]]
-        tabela[1] = np.column_stack([tabela[1], [self.balanco.dados.cd_cvm for i in tabela[1]]])
-        return Features(tabela[0], tabela[1])['CD_CVM', 'IND', 'CD_RELATORIO', 'CONTA', 'VALOR']
+        tabela[0]+=['SK_RELATORIO']
+        tabela[1] = np.column_stack([tabela[1], [sk for i in tabela[1]]])
+        return Features(tabela[0], tabela[1])['SK_RELATORIO', 'CONTA', 'DS_CONTA', 'VALOR']
 
-    def fat_balancos_cvm_agregado(self, ind, ano, tri):
+    def fat_balancos_agregado(self, ind, ano, tri, sk):
         tabela = self.get(ind,ano,tri,False)
-        tabela[0]+=['CD_CVM']
-        tabela[1][:,1]=[ind for i in tabela[1]]
-        tabela[1] = np.column_stack([tabela[1], [self.balanco.dados.cd_cvm for i in tabela[1]]])
-        return Features(tabela[0], tabela[1])['CD_CVM', 'IND', 'CD_RELATORIO', 'CONTA', 'VALOR']
+        tabela[0]+=['SK_RELATORIO']
+        tabela[1] = np.column_stack([tabela[1], [sk for i in tabela[1]]])
+        return Features(tabela[0], tabela[1])['SK_RELATORIO', 'CONTA', 'DS_CONTA', 'VALOR']
+
+    def dim_conta(self, ind, ano, tri):
+        tabela = self.get(ind,ano,tri,False)
+        return Features(tabela[0], tabela[1])['CONTA', 'DS_CONTA']
 
     def dim_ativo(self):
+        self.balanco.dados.cd_cvm()
         tb_ativo=[['CD_CVM','CD_ATIVO','CNPJ','ISIN'],
-        np.array([[self.balanco.dados.cd_cvm, self.papel,
-        self.balanco.dados.cnpj,
-        self.balanco.dados.isin()]])]
+        np.array([[self.balanco.dados.cd_cvm_, self.papel,
+        self.balanco.dados.cnpj_,
+        self.balanco.dados.isin()]], dtype=object)]
         return Features(tb_ativo[0], tb_ativo[1])
 
-    def dim_relatorios(self):
-        relat = self.balanco.relatorios[self.ano]
-        relatorios = np.array([list(relat[i]) for i in relat])
-        relatorios = np.column_stack([relatorios, list(relat)])
-        relatorios = np.column_stack([relatorios, [self.ano for i in list(relat)]])
-        relatorios = np.column_stack([relatorios, [self.balanco.dados.cd_cvm for i in list(relat)]])
-
-        tb_relatorio = [['DATA_REF','DATA_ENT','CD_RELATORIO','TRIMESTRE', 'ANO', 'CD_CVM'], relatorios]
-        tb_relatorio = Features(tb_relatorio[0], tb_relatorio[1])\
-            ['CD_CVM', 'CD_RELATORIO', 'ANO', 'TRIMESTRE', 'DATA_REF', 'DATA_ENT']
-
-        return tb_relatorio
-
-
-    def dim_relatorios_datas_aggs(self, ind, ano, tri):
-        tb_relatorio = [['CD_CVM', 'IND', 'CD_RELATORIO', 'ANO','DATA_REF_INI', 
-                'DATA_REF_FIN', 'TRIMESTRE_INI', 'TRIMESTRE_FIN'],
-                        np.array([self.datarefs[(ind, ano, tri)]])]
+    def dim_relatorio(self, ind, ano, tri, sk):
+        self.balanco.dados.cd_cvm()
+        t1 = self.get(ind,ano,tri,True)[1][0]
+        t2 = self.get(ind,ano,tri,False)[1][0]
+        tb_relatorio = [['SK_RELATORIO','CD_CVM', 'IND', 'ANO', 'DATA_REF', 'DATA_REF_INI', 
+                'DATA_REF_FIN', 'TRIMESTRE', 'TRIMESTRE_INI', 'TRIMESTRE_FIN'],
+                        np.array([[sk, self.balanco.dados.cd_cvm_, ind, ano,
+                                    t1[4], t2[4], t2[5], t1[6],t2[7], t2[8]]])]
 
         return Features(tb_relatorio[0], tb_relatorio[1])
 
 
 
-
+# Sobe dados para um banco de dados
 class Upload:
-    def __init__(self, cnn, acao, anos, wdriver = 'chromedriver.exe'):
+    def __init__(self, cnn, acao, anos):
         self.cnn = cnn
-        self.wdriver = wdriver
         self.acao = acao if type(acao)==list else [acao]
-        self.anos = anos if type(anos)==list else [anos]
+        anos = anos if type(anos)==list else [anos]
+        self.anos = range(min(anos), max(anos)+1)
 
     def go(self):
-        self.balanco = Balancos(self.acao[0],self.wdriver)
-        for ano in self.anos:
-            if self.balanco.balanco.relatorios_cvm(ano):
-                for tri in [i for i in self.balanco.balanco.relatorios[ano]]:
-                    for ind in main.indice_ind:
-                        self.input(ind, ano, tri)
-            
-                    
+        print("%.2f" % (0) + ' %', end='\r')
+        for n, papel in enumerate(self.acao):
+            self.balanco = BalancosInv(papel)
+            cd_cvm=False
+            # verifica se o ativo já existe no banco de dados
+            try:   
+                cd_cvm = self.cnn.cursor.execute(f"select cd_cvm, cnpj from dim_ativo where CD_ATIVO=='{papel}'").fetchone() if \
+                        self.cnn.table_exist('dim_ativo') else False
+                self.balanco.balanco.dados.cd_cvm_ = cd_cvm[0] if cd_cvm else self.balanco.balanco.dados.cd_cvm()
+                self.balanco.balanco.dados.cnpj_ = cd_cvm[1] if cd_cvm else self.balanco.balanco.dados.cnpj()
+                cd_cvm = self.balanco.balanco.dados.cd_cvm_ 
+            except:
+                pass
+            if cd_cvm:
+                if not self.cnn.reg_existe('dim_ativo', CD_ATIVO=papel):
+                    self.balanco.dim_ativo().to_sql('dim_ativo', self.cnn, campos=['CD_CVM'])
+                anos_disp = self.anos_disponiveis(papel)
+                for ano in self.anos:
+                    if ano in anos_disp:
+                        for tri in [1,2,3,4]:
+                            for ind in [1,2,3,4,5]:
+                                self.input(ind, ano, tri)
+
+            print("%.2f" % ((n+1)/len(self.acao)*100) + ' %', end='\r')
+                
+
     def input(self, ind, ano, tri):
+
+        # Defininfo o SK_RELATORIO
+        if self.cnn.table_exist('dim_relatorio'):
+            sk_relatorio = self.cnn.cursor.execute(f"""select SK_RELATORIO from dim_relatorio where 
+                                CD_CVM = {self.balanco.balanco.dados.cd_cvm_} and IND = {ind} and ANO = {ano} and TRIMESTRE = {tri}""").fetchall()
+            if sk_relatorio:
+                sk_relatorio = sk_relatorio[0][0]
+            else:
+                ultimo = self.cnn.cursor.execute('select max(SK_RELATORIO) from dim_relatorio').fetchall()[0][0]
+                sk_relatorio = ultimo+1
+        else:
+            sk_relatorio = 1
+    
+        for i in ['dim_relatorio','fat_balancos_agregado', 'fat_balancos_desagregado']:
+            if not self.cnn.reg_existe(i, 
+                    SK_RELATORIO = sk_relatorio):
+                if self.balanco.balanco.raw(ind,ano,tri):
+                    exec(f"""self.balanco.{i}(ind, ano, tri, sk_relatorio).to_sql(i,self.cnn, campos=['SK_RELATORIO'])""")
+
+    def dim_indicador(self):
+            self.cnn.to_sql('dim_indicador', ['IND', 'DS_IND'], [[i, main.indice_ind[i]] for i in main.indice_ind], 'replace')
+
+    # Encontra os anos que o papel possui balanço
+    def anos_disponiveis(self, papel):
+        url = f"""https://www.investsite.com.br/demonstracao_resultado.php?cod_negociacao={papel}"""
+        response = main.requests.get(url)
+        soup = main.BeautifulSoup(response.content, 'html.parser')
+        anos_disp = soup.find(id='ano_dem').find_all('option')
+        return [int(i.text) for i in anos_disp]
         
-        for i in ['fat_balancos_cvm_agregado', 'fat_balancos_cvm_desagregado', 'dim_relatorios_datas_aggs']:
-            if not self.cnn.table_exist(i) or \
-            not self.cnn.reg_existe(i, 
-                    CD_CVM=self.balanco.balanco.cd_cvm, IND=ind, 
-                    CD_RELATORIO=self.balanco.balanco.relatorios[ano][tri][2]):
-
-                exec(f"""self.balanco.{i}(ind, ano, tri).to_sql(i,self.cnn, campos=['CD_CVM', 'IND', 'CD_RELATORIO'])""")
-
- 
-
-
-
-
+# Retorna os dados de balanços do banco de dados
+class Balanco:
+    def __init__(self, papel, cnn):
+        self.papel=papel
+        self.cnn = cnn
+        
+    def get(self, ind, ano, tri, ajustado=True):
+        if ajustado:
+            tab = self.cnn.cursor.execute(f"""select CD_ATIVO, DS_IND, a.CONTA, 
+                DS_CONTA, DATA_REF, ANO, TRIMESTRE, VALOR from fat_balancos_desagregado a
+                inner join dim_relatorio b
+                on a.SK_RELATORIO = b.SK_RELATORIO
+                inner join dim_ativo c
+                on b.CD_CVM = c.CD_CVM
+                inner join dim_indicador d
+                on b.IND = d.IND
+                where c.CD_ATIVO = '{self.papel}' and b.IND = {ind} and b.ANO = {ano} and b.TRIMESTRE = {tri}""")
+        else:
+            tab = self.cnn.cursor.execute(f"""select CD_ATIVO, DS_IND, a.CONTA, 
+                DS_CONTA, DATA_REF_INI, DATA_REF_FIN, ANO, TRIMESTRE_INI, TRIMESTRE_FIN, VALOR from fat_balancos_agregado a
+                inner join dim_relatorio b
+                on a.SK_RELATORIO = b.SK_RELATORIO
+                inner join dim_ativo c
+                on b.CD_CVM = c.CD_CVM
+                inner join dim_indicador d
+                on b.IND = d.IND
+                where c.CD_ATIVO = '{self.papel}' and b.IND = {ind} and b.ANO = {ano} and b.TRIMESTRE = {tri}""")
+                   
+        valores = tab.fetchall()
+        if len(valores):
+            tabela = [[i[0] for i in tab.description], np.array([list(i) for i in valores])]
+            return Features(tabela[0], tabela[1])
+        else:
+            print('Não encontrado')
+        
 
 
 

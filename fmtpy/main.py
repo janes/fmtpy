@@ -59,7 +59,8 @@ trimestre = {
 }
 
 indice_ind = {
-1:'Resultado', 2:'Balanço Ativo', 3:'Balanço Passivo', 4:'Resultado Abrangente', 5:'Fluxo de Caixa', 6:'Valor Adicionado'#, 7:'Mutações do PL'
+1:'Resultado', 2:'Balanço Ativo', 3:'Balanço Passivo', 4:'Valor Adicionado', 
+5:'Fluxo de Caixa', 6:'Resultado Abrangente' #, 7:'Mutações do PL'
 }
 
 # Busca o codigo cvm, cnpj e isin usando o site da B3, 
@@ -72,8 +73,8 @@ class Dados_B3:
     # Obtem o cnpj e isin
     def cnpj(self):
     
-        if 'cnpj' in self.__dict__:
-            return self.__dict__['cnpj']
+        if 'cnpj_' in self.__dict__:
+            return self.__dict__['cnpj_']
 
         cd = self.cd_cvm()
 
@@ -84,10 +85,10 @@ class Dados_B3:
         
         tipo_papel = 'ACNOR' if int(self.papel[-1:]) == 3 else 'ACNPR'
         isin = [i.replace(',','') for i in list(set(soup[1].text.split())) if i[6:11] == tipo_papel][0]
-        cnpj = soup[2].text.split()[1]
+        cnpj_ = soup[2].text.split()[1]
 
         setattr(self, '__isin', isin)
-        setattr(self, 'cnpj', cnpj)
+        setattr(self, 'cnpj_', cnpj_)
 
         return cnpj
 
@@ -110,9 +111,9 @@ class Dados_B3:
         codigo = soup.find('tr', class_='GridRow_SiteBmfBovespa GridBovespaItemStyle')
         codigo = codigo.find('td').find('a')['href']
         codigo[codigo.find('codigoCvm=')+len('codigoCvm='):]
-        cd_cvm = int(codigo[codigo.find('codigoCvm=')+len('codigoCvm='):])
-        setattr(self, 'cd_cvm', cd_cvm)
-        return cd_cvm
+        cd_cvm_ = int(codigo[codigo.find('codigoCvm=')+len('codigoCvm='):])
+        setattr(self, 'cd_cvm', cd_cvm_)
+        return cd_cvm_
 
 
 # Obtem dados de outros sites
@@ -124,20 +125,23 @@ class Dados:
 
     # Obtem o nome e cnpj da ação no site status invest
     def cnpj(self):
-        if 'cnpj' in self.__dict__:
-            return self.__dict__['cnpj']
+        if 'cnpj_' in self.__dict__:
+            return self.__dict__['cnpj_']
         url = f"""https://statusinvest.com.br/acoes/"""+self.papel.lower()
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
         try:
-            cnpj = soup.find('small', class_ = 'd-block fs-4 fw-100 lh-4').text
-            setattr(self, 'cnpj', cnpj)
-            return cnpj
+            cnpj_ = soup.find('small', class_ = 'd-block fs-4 fw-100 lh-4').text
+            setattr(self, 'cnpj_', cnpj_)
+            return cnpj_
         except:
-            print('CNPJ não encontrado')   
+            pass
+            #print('CNPJ não encontrado')   
 
     # Obtem o isin no site adfvn
     def isin(self):
+        if '__isin' in self.__dict__:
+            return self.__dict__['__isin']
         url='https://br.advfn.com/p.php?pid=qkquote&symbol='+self.papel.lower()
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -147,12 +151,14 @@ class Dados:
         
     # Busca o código cvm no site da cvm
     def cd_cvm(self):
+        if 'cd_cvm_' in self.__dict__:
+            return self.__dict__['cd_cvm_']
         url=f'https://cvmweb.cvm.gov.br/SWB/Sistemas/SCW/CPublica/CiaAb/ResultBuscaParticCiaAb.aspx?CNPJNome={self.cnpj()}&TipoConsult=C'
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'html.parser')
-        cd_cvm = soup.find(id = 'dlCiasCdCVM__ctl1_Linkbutton5').text  
-        setattr(self, 'cd_cvm', int(cd_cvm))   
-        return int(cd_cvm)
+        cd_cvm_ = soup.find(id = 'dlCiasCdCVM__ctl1_Linkbutton5').text  
+        setattr(self, 'cd_cvm_', int(cd_cvm_))   
+        return int(cd_cvm_)
 
 
 # Obtem dados do site investsite   
@@ -161,7 +167,6 @@ class Raw:
     def __init__(self, papel):
         self.papel = papel
         self.dados = Dados(self.papel)
-        self.isin = self.dados.isin()
         self.series = {}
         
         
@@ -173,6 +178,8 @@ class Raw:
             return self.series[(ind, ano, tri)] 
 
         url = 'https://www.investsite.com.br/includes/demonstrativo_tabela_ajax.php'
+
+        self.isin = self.dados.isin()
         
         data = {
             'tipo_dem': trimestre[tri][1],
@@ -186,10 +193,13 @@ class Raw:
           }
            
         response = requests.post(url, data=data, headers=headers)
-      
         soup = BeautifulSoup(response.content, 'html.parser')
         idd = tpind[1] if tri == 4 else tpind[1]+'_itr'
+       # if not soup.find('table', id=idd):
+       #     return
         soup = soup.find('table', id=idd).findAll('tr')
+        if not len(soup[2:]):
+            return
         
         th = [i.text.replace('(R$ mil)', '').replace(' ','') for i in soup[0].findAll('th')[:3]]
         td = [[i.text if i.text !='0' else None for i in j.findAll('td')[:3]] for j in soup[2:]]
@@ -256,7 +266,7 @@ class Balanco:
         raw = self.raw()
         valores = raw[1]
 
-      #  cdcvm = [self.balanco.dados.cd_cvm for i in valores]
+      #  cdcvm = [self.balanco.dados.cd_cvm_ for i in valores]
       #  indice = [self.ind for i in valores]
 
         ativo = [self.papel for i in valores]
@@ -265,7 +275,7 @@ class Balanco:
         tabela = {}
        # tabela.update({'cdcvm':['CD_CVM', cdcvm]})
         tabela.update({'cdcvm':['CD_ATIVO', ativo]})
-        tabela.update({'indice':['IND', indice]})
+        tabela.update({'indice':['DS_IND', indice]})
         tabela.update({'conta':['CONTA', 'DS_CONTA', valores[:,[0,1]]], 'valor':['VALOR',valores[:,2]]})
         # adiciona outras colunas
         #encontra trimestre inicial e final
@@ -282,7 +292,7 @@ class Balanco:
             tabela.update({'trimestre': ['TRIMESTRE_INI', 'TRIMESTRE_FIN', trimestre]})
             # salvando para a tabela de relatorios
             if not self.site:
-                self.datarefs.update({(self.ind, self.ano, self.tri) : [self.balanco.dados.cd_cvm, self.ind,
+                self.datarefs.update({(self.ind, self.ano, self.tri) : [self.balanco.dados.cd_cvm_, self.ind,
                 self.balanco.relatorios[self.ano][self.tri][2], self.ano]+datas[0]+trimestre[0]})
 
 
