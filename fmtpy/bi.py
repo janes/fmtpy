@@ -164,32 +164,39 @@ class Upload:
     def go(self):
         print("%.2f" % (0) + ' %', end='\r')
         for n, papel in enumerate(self.acao):
+            print(papel +' ' "%.2f" % ((n+1)/len(self.acao)*100) + ' %'+' '*10, end='\r')
             self.balanco = BalancosInv(papel)
             cd_cvm=False
+            isin = False
             # verifica se o ativo já existe no banco de dados
             try:   
-                cd_cvm = self.cnn.cursor.execute(f"select cd_cvm, cnpj from dim_ativo where CD_ATIVO=='{papel}'").fetchone() if \
+                cd_cvm = self.cnn.cursor.execute(f"select cd_cvm, cnpj, isin from dim_ativo where CD_ATIVO=='{papel}'").fetchone() if \
                         self.cnn.table_exist('dim_ativo') else False
                 self.balanco.balanco.dados.cd_cvm_ = cd_cvm[0] if cd_cvm else self.balanco.balanco.dados.cd_cvm()
                 self.balanco.balanco.dados.cnpj_ = cd_cvm[1] if cd_cvm else self.balanco.balanco.dados.cnpj()
+                self.balanco.balanco.dados.__isin = cd_cvm[2] if cd_cvm else self.balanco.balanco.dados.isin()
                 cd_cvm = self.balanco.balanco.dados.cd_cvm_ 
+                isin = self.balanco.balanco.dados.__isin
             except:
                 pass
-            if cd_cvm:
+            if cd_cvm and isin:
                 if not self.cnn.reg_existe('dim_ativo', CD_ATIVO=papel):
                     self.balanco.dim_ativo().to_sql('dim_ativo', self.cnn, campos=['CD_CVM'])
-                anos_disp = self.anos_disponiveis(papel)
+                anos_disp = self.anos_disponiveis(papel)[:-1]
                 for ano in self.anos:
                     if ano in anos_disp:
                         for tri in [1,2,3,4]:
                             for ind in [1,2,3,4,5]:
-                                self.input(ind, ano, tri)
+                                try:
+                                    self.input(ind, ano, tri)
+                                except:
+                                    self.cnn.to_sql('upload_erros', ['CD_ATIVO', 'IND', 'ANO', 'TRI'],
+                                                    [[papel, ind, ano, tri]], 'append', campos=['CD_ATIVO'])
 
-            print("%.2f" % ((n+1)/len(self.acao)*100) + ' %', end='\r')
+            
                 
 
     def input(self, ind, ano, tri):
-
         # Defininfo o SK_RELATORIO
         if self.cnn.table_exist('dim_relatorio'):
             sk_relatorio = self.cnn.cursor.execute(f"""select SK_RELATORIO from dim_relatorio where 
@@ -218,6 +225,12 @@ class Upload:
         soup = main.BeautifulSoup(response.content, 'html.parser')
         anos_disp = soup.find(id='ano_dem').find_all('option')
         return [int(i.text) for i in anos_disp]
+
+# Nome dos ativos no site da uol
+def ativos_uol():
+    url = f"""http://cotacoes.economia.uol.com.br/ws/asset/stock/list?size=10000"""
+    response = main.requests.get(url).json()
+    return [i['code'][:i['code'].find('.')] for i in response['data']]
         
 # Retorna os dados de balanços do banco de dados
 class Balanco:
