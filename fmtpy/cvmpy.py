@@ -6,7 +6,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 import numpy as np
 import time
-import invest as inv
+#import invest as inv
+from fmtpy import invest as inv
 
 
 options = webdriver.ChromeOptions()
