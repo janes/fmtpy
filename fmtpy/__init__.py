@@ -2,8 +2,9 @@
 
 from fmtpy import main 
 from fmtpy import cvmpy
+from fmtpy import invest
 
-class Balancos_invest(main.Balanco):
+class Balancos_invest(invest.Balanco):
     def __init__(self, papel):
         super().__init__(papel, True)
 
