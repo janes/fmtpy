@@ -6,8 +6,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 import numpy as np
 import time
-#from fmtpy import main 
-import main
+import invest as inv
 
 
 options = webdriver.ChromeOptions()
@@ -40,7 +39,7 @@ class Raw:
 
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         self.papel = papel
-        self.dados = main.Dados(self.papel)
+        self.dados = inv.Dados(self.papel)
         self.wdriver = wdriver
         self.relatorios = {}
         self.series = {}
@@ -56,7 +55,7 @@ class Raw:
         dats = relat['onmouseover']
         strm = 'MontaHint'
         tp = eval(dats[dats.find(strm)+len(strm):][:-2])
-        return [main.todate(tp[0]), main.todate(tp[3][:10])]
+        return [inv.todate(tp[0]), inv.todate(tp[3][:10])]
         
     # busca no site da B3 as datas e números dos relatórios de um ano para um papel
     def relatorios_cvm_b3(self, ano):
@@ -68,7 +67,7 @@ class Raw:
         
         for i in range(20):
             print(1)
-            soup = main.bstimeout(url, 10)
+            soup = inv.bstimeout(url, 10)
   
             viewstate = soup.find('input', id='__VIEWSTATE')
             eventval = soup.find('input', id='__EVENTVALIDATION')
@@ -98,7 +97,7 @@ class Raw:
 
         # as vezes a página da bolsa precisa de mais de uma tentativa para retornar os dados
         for i in range(20):
-            soup = main.bstimeout(url, 10, data=data)
+            soup = inv.bstimeout(url, 10, data=data)
             relatorios = [i for i in soup.find_all('a') if "Informações Trimestrais" in i.text or 'Demonstrações Financeiras Padronizadas' in i.text]
             
             if len(relatorios) > 0:
@@ -147,12 +146,12 @@ class Raw:
             relat = soup.find(id='grdDocumentos').find('tbody')
             relat = [[i.text for i in j.find_all('td')[:-1]]+[self.__num_doc(j.find_all('td')[-1:][0].find('i')['onclick'])] for j in relat.find_all('tr')]
             
-       #     relat = [i for i in relat if i[7]=='Ativo' and main.todate(i[5].split()[1]).year==ano]
+       #     relat = [i for i in relat if i[7]=='Ativo' and inv.todate(i[5].split()[1]).year==ano]
             relat = [i for i in relat if i[7]=='Ativo']
             if len(relat)>0:
                 relat = np.array(relat, dtype=object)[:,[5,6,10]]
                 for c in [0,1]:
-                    relat[:,c]=[main.todate(i.split()[1]) for i in relat[:,c]]
+                    relat[:,c]=[inv.todate(i.split()[1]) for i in relat[:,c]]
 
                 d.append(np.column_stack([[int(i[0].month/3) for i in relat], relat]))
 
@@ -201,7 +200,7 @@ class Raw:
         return tabela
 
 
-class Balanco(main.Balanco):
+class Balanco(inv.Balanco):
 
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         super().__init__(papel, False)

@@ -2,10 +2,12 @@ import main
 import sqlite3
 import numpy as np
 import pandas as pd
-#from fmtpy import main
-import main
-#from fmtpy import cvmpy as cvm
-import cvmpy as cvm
+from fmtpy import main
+#import main
+from fmtpy import cvmpy as cvm
+#import cvmpy as cvm
+from fmtpy import invest as inv
+#import invest as inv
 from datetime import datetime, date
 
 class sqlite:
@@ -111,19 +113,23 @@ class Features(main.Features):
 
 
 # Gera as tabelas no layout para o banco de dados pelo site Invest
-class BalancosInv(main.Balanco):
+class BalancosInv(inv.Balanco):
 
     def __init__(self, papel):
         super().__init__(papel)
 
     def fat_balancos_desagregado(self, ind, ano, tri, sk):
         tabela = self.get(ind,ano,tri,True)
+        if not tabela:
+            return
         tabela[0]+=['SK_RELATORIO']
         tabela[1] = np.column_stack([tabela[1], [sk for i in tabela[1]]])
         return Features(tabela[0], tabela[1])['SK_RELATORIO', 'CONTA', 'DS_CONTA', 'VALOR']
 
     def fat_balancos_agregado(self, ind, ano, tri, sk):
         tabela = self.get(ind,ano,tri,False)
+        if not tabela:
+            return
         tabela[0]+=['SK_RELATORIO']
         tabela[1] = np.column_stack([tabela[1], [sk for i in tabela[1]]])
         return Features(tabela[0], tabela[1])['SK_RELATORIO', 'CONTA', 'DS_CONTA', 'VALOR']
@@ -162,9 +168,9 @@ class Upload:
         self.anos = range(min(anos), max(anos)+1)
 
     def go(self):
-        print("%.2f" % (0) + ' %', end='\r')
+        progres = 0
         for n, papel in enumerate(self.acao):
-            print(papel +' ' "%.2f" % ((n+1)/len(self.acao)*100) + ' %'+' '*10, end='\r')
+            print(papel +' ' "%.2f" % (progres) + ' %'+' '*10, end='\r')
             self.balanco = BalancosInv(papel)
             cd_cvm=False
             isin = False
@@ -182,19 +188,17 @@ class Upload:
             if cd_cvm and isin:
                 if not self.cnn.reg_existe('dim_ativo', CD_ATIVO=papel):
                     self.balanco.dim_ativo().to_sql('dim_ativo', self.cnn, campos=['CD_CVM'])
-                anos_disp = self.anos_disponiveis(papel)[:-1]
+                anos_disp = self.anos_disponiveis(papel)
+                anos_disp = anos_disp if anos_disp else []
                 for ano in self.anos:
                     if ano in anos_disp:
                         for tri in [1,2,3,4]:
                             for ind in [1,2,3,4,5]:
-                                try:
-                                    self.input(ind, ano, tri)
-                                except:
-                                    self.cnn.to_sql('upload_erros', ['CD_ATIVO', 'IND', 'ANO', 'TRI'],
-                                                    [[papel, ind, ano, tri]], 'append', campos=['CD_ATIVO'])
+                   
+                                self.input(ind, ano, tri)
+            progres = (n+1)/len(self.acao)*100
 
-            
-                
+
 
     def input(self, ind, ano, tri):
         # Defininfo o SK_RELATORIO
@@ -208,12 +212,19 @@ class Upload:
                 sk_relatorio = ultimo+1
         else:
             sk_relatorio = 1
+
     
-        for i in ['dim_relatorio','fat_balancos_agregado', 'fat_balancos_desagregado']:
+        for i in ['fat_balancos_agregado', 'fat_balancos_desagregado', 'dim_relatorio']:
             if not self.cnn.reg_existe(i, 
                     SK_RELATORIO = sk_relatorio):
-                if self.balanco.balanco.raw(ind,ano,tri):
-                    exec(f"""self.balanco.{i}(ind, ano, tri, sk_relatorio).to_sql(i,self.cnn, campos=['SK_RELATORIO'])""")
+                if self.balanco.get(ind,ano,tri, True):
+                    t = eval(f"""self.balanco.{i}(ind, ano, tri, sk_relatorio)""")
+                    t.to_sql(i,self.cnn, campos=['SK_RELATORIO'])
+                else:
+                    self.cnn.to_sql('upload_erros', ['CD_ATIVO', 'IND', 'ANO', 'TRI'],
+                                        [[self.balanco.papel, ind, ano, tri]], 'append')
+
+
 
     def dim_indicador(self):
             self.cnn.to_sql('dim_indicador', ['IND', 'DS_IND'], [[i, main.indice_ind[i]] for i in main.indice_ind], 'replace')
@@ -221,16 +232,19 @@ class Upload:
     # Encontra os anos que o papel possui balanço
     def anos_disponiveis(self, papel):
         url = f"""https://www.investsite.com.br/demonstracao_resultado.php?cod_negociacao={papel}"""
-        response = main.requests.get(url)
-        soup = main.BeautifulSoup(response.content, 'html.parser')
-        anos_disp = soup.find(id='ano_dem').find_all('option')
-        return [int(i.text) for i in anos_disp]
+        response = inv.requests.get(url)
+        soup = inv.BeautifulSoup(response.content, 'html.parser')
+        anos_disp = soup.find(id='ano_dem')
+        if anos_disp:
+            anos_disp = anos_disp.find_all('option')
+            return [int(i.text) for i in anos_disp]
 
 # Nome dos ativos no site da uol
 def ativos_uol():
     url = f"""http://cotacoes.economia.uol.com.br/ws/asset/stock/list?size=10000"""
     response = main.requests.get(url).json()
     return [i['code'][:i['code'].find('.')] for i in response['data']]
+
         
 # Retorna os dados de balanços do banco de dados
 class Balanco:
