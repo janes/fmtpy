@@ -48,7 +48,7 @@ class Features:
         return features1
 
     def df(self):
-        matriz = self.df
+        matriz = self.np()
         return pd.DataFrame(matriz[1], columns=matriz[0])
 
 

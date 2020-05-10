@@ -34,8 +34,10 @@ class Opcoes:
         opc=[]
         for i in self.papel:
             opc.append(self.lista_opcoes(i))
-
-        return Serie([['ativo', 'tipo', 'mod', 'vcto', 'strike', 'price'], opc, self.papel])
+        if len(self.papel)>0:
+            return Serie([['ativo', 'tipo', 'mod', 'vcto', 'strike', 'price'], opc, self.papel])
+        else:
+            return Features(['ativo', 'tipo', 'mod', 'vcto', 'strike', 'price'], opc, self.papel[0])
 
         
 

@@ -10,7 +10,7 @@ warnings.filterwarnings('ignore')
 
 
 def help():
-    """
+    print("""
     # Gerar balanços financeiros:
     Método: balancos
         - Paramentros:
@@ -136,7 +136,7 @@ def help():
     https://www.linkedin.com/in/fabiomt/
     https://github.com/Fabiocke
         
-    """
+    """)
 
 def balancos(papel, wdriver=False, cnn=False):
     if cnn:
