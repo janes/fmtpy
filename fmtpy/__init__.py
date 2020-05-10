@@ -5,19 +5,11 @@ from fmtpy import cvmpy
 from fmtpy import invest
 from fmtpy import bi
 from fmtpy import opcoes
-
-class BalancosInvest(invest.Balanco):
-    def __init__(self, papel):
-        super().__init__(papel, True)
-
-class BalancosCVM(cvmpy.Balanco):
-    def __init__(self, papel, wdriver = 'chromedriver.exe'):
-        super().__init__(papel, wdriver)
+import warnings
+warnings.filterwarnings('ignore')
 
 
-
-
-def balanco(papel, wdriver=False, cnn=False):
+def balancos(papel, wdriver=False, cnn=False):
     if cnn:
         return bi.Balanco(papel, cnn)
     elif wdriver:
