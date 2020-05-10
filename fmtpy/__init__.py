@@ -17,9 +17,9 @@ class BalancosCVM(cvmpy.Balanco):
 
 class Balancos:
     def __init__(self, papel, wdriver = False, cnn = False):
-        self.call(papel, wdriver, cnn, fonte)
+        self.call(papel, wdriver, cnn)
 
-    def call(self, papel, wdriver, cnn, fonte):
+    def call(self, papel, wdriver, cnn):
         if cnn:
             return bi.Balanco(papel, cnn)
         elif wdriver:
