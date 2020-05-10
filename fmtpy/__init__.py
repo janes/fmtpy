@@ -23,7 +23,7 @@ class Balancos:
         if cnn:
             return bi.Balanco(papel, cnn)
         elif wdriver:
-            return cvm.Balanco(papel, wdriver)
+            return cvmpy.Balanco(papel, wdriver)
         else:
             return invest.Balanco(papel)
 
