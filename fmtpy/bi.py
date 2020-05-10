@@ -1,4 +1,4 @@
-import main
+
 import sqlite3
 import numpy as np
 import pandas as pd
@@ -11,8 +11,8 @@ from fmtpy import invest as inv
 from datetime import datetime, date
 
 class sqlite:
-    def __init__(self, banco):
-        self.banco = banco
+    def __init__(self, cnn):
+        self.cnn = cnn
         self.connect()
         self.formato_sql = {
             int:'int',
@@ -23,7 +23,7 @@ class sqlite:
         }
 
     def connect(self):
-        self.cnn = sqlite3.connect(self.banco)
+   #     self.cnn = sqlite3.connect(self.banco)
         self.cursor = self.cnn.cursor()
 
     def close(self):
@@ -103,7 +103,7 @@ class Features(main.Features):
                 cnn.delete_from(tabela, **campos)
             elif cnn.reg_existe(tabela, **campos):
                 return
-        cnn.to_sql(tabela, self.head, self.dados, 'append')
+        cnn.to_sql(tabela, self._head, self._dados, 'append')
 
     def df(self):
         tabela = self.np()
@@ -254,7 +254,7 @@ class Balanco:
         
     def get(self, ind, ano, tri, ajustado=True):
         if ajustado:
-            tab = self.cnn.cursor.execute(f"""select CD_ATIVO, DS_IND, a.CONTA, 
+            tab = self.cnn.cursor().execute(f"""select CD_ATIVO, DS_IND, a.CONTA, 
                 DS_CONTA, DATA_REF, ANO, TRIMESTRE, VALOR from fat_balancos_desagregado a
                 inner join dim_relatorio b
                 on a.SK_RELATORIO = b.SK_RELATORIO
@@ -264,7 +264,7 @@ class Balanco:
                 on b.IND = d.IND
                 where c.CD_ATIVO = '{self.papel}' and b.IND = {ind} and b.ANO = {ano} and b.TRIMESTRE = {tri}""")
         else:
-            tab = self.cnn.cursor.execute(f"""select CD_ATIVO, DS_IND, a.CONTA, 
+            tab = self.cnn.cursor().execute(f"""select CD_ATIVO, DS_IND, a.CONTA, 
                 DS_CONTA, DATA_REF_INI, DATA_REF_FIN, ANO, TRIMESTRE_INI, TRIMESTRE_FIN, VALOR from fat_balancos_agregado a
                 inner join dim_relatorio b
                 on a.SK_RELATORIO = b.SK_RELATORIO

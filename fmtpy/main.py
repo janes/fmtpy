@@ -4,6 +4,7 @@
 import requests
 import numpy as np
 import json
+from datetime import datetime
 from tabulate import tabulate
 from scipy.stats import norm
 from scipy.stats import pearsonr
@@ -17,31 +18,56 @@ def dias_uteis():
     if not dus:
         dus = Series(['PETR4']).historico().date.tolist()
 
+
 # Gera um dataframe       
 class Features:
     def __init__(self, head, dados, nome=''):    
-        self.dados = np.array(dados)
-        self.head = head
-        self.ativo = nome
+        self._dados = np.array(dados)
+        self._head = head
+        self._ativo = nome
 
-        for j, i in enumerate(self.head):
-            setattr(self, i, self.dados[:,j])
+        for j, i in enumerate(self._head):
+            setattr(self, i, self._dados[:,j])
         
     def __repr__(self):
-        ativos = list(self.__dict__)[3:3+len(self.head)]
-        return str(self.ativo + '\n' + tabulate(np.concatenate(([ativos], np.column_stack([self.__dict__[i] for i in ativos])))))
+        ativos = list(self.__dict__)[3:3+len(self._head)]
+        return str(self._ativo + '\n' + tabulate(np.concatenate(([ativos], np.column_stack([self.__dict__[i] for i in ativos])))))
 
     def __getitem__(self, *ativos):
         ativos = ativos[0] if type(ativos[0])==tuple else ativos
-        return self.__class__(list(ativos), np.column_stack([self.__dict__[i] for i in ativos]), self.ativo)
+        return self.__class__(list(ativos), np.column_stack([self.__dict__[i] for i in ativos]), self._ativo)
 
     # Retorna os dados em numpy
     def np(self, *features):
-        features = list(self.__dict__)[3:3+len(self.head)] if len(features)==0 else features
+        features = list(self.__dict__)[3:3+len(self._head)] if len(features)==0 else features
         features = features[0] if type(features[0])==tuple else features    
         val = [np.column_stack([self.__dict__[i] for i in features])][0] if len(features)>1 else self.__dict__[features[0]]
-        features1 = [[i for i in features], val, self.ativo]
+        features1 = [[i for i in features], val, self._ativo]
         return features1
+
+# Gera um objeto contendo um conjunto de objeto Features
+class Serie:
+    def __init__(self, dados, classe = Features):
+        self._dados = dados[1]
+        self._head = dados[0]
+        self._ativos = dados[2]
+        
+        for j, i in enumerate(self._ativos):
+            setattr(self, i, classe(self._head, self._dados[j], i))
+
+    def __repr__(self):
+        if len(self._dados)==1:
+            return str(tabulate(np.concatenate(([self._head], np.array(self._dados[0])))))
+        else:
+            return ','.join(self._ativos)
+
+    def __getitem__(self, ativo):
+        return self.__dict__[ativo]
+
+
+# converte string para date
+def todate(data):
+    return datetime.strptime(data, "%d/%m/%Y").date()
         
 
 # As classes abaixo buscam cotações históricas e intraday
@@ -103,7 +129,7 @@ class Series:
         for n, i in enumerate(dados[1]):
             dados[1][n][:,0] = [i/1000000 for i in i[:,0]]
         dados[1] = [i[np.isin(i[:,0], dus)].tolist() for i in dados[1]] if self.__papel != ['PETR4'] else dados[1]
-        hist = Serie(dados) if len(self.__papel)>1 else Features_series(dados[0], dados[1][0], dados[2][0])
+        hist = SerieCotacoes(dados) if len(self.__papel)>1 else Features_series(dados[0], dados[1][0], dados[2][0])
         self.__dataini=20000101 
         self.__datafin=20300101
         return hist
@@ -111,7 +137,7 @@ class Series:
     # Gera cotações do último dia ou atual
     def intraday(self):
         dados = self.__dados('intraday')
-        return Serie(dados) if len(self.__papel)>1 else Features_series(dados[0], dados[1][0], dados[2][0])
+        return SerieCotacoes(dados) if len(self.__papel)>1 else Features_series(dados[0], dados[1][0], dados[2][0])
         
 
 
@@ -128,15 +154,15 @@ class Features_series(Features):
     # Gera a coluna de retornos dia a dia
     def gera_retornos(self, tipo=0):
         precos = self.__dict__['price']
-        dados, retornos = self.dados, np.array([self.retorno(precos[i],precos[i+1], tipo) for i in range(len(precos[:-1]))])
-        return self.__class__(list(self.__dict__)[3:]+['retornos'], np.column_stack([dados, np.append(retornos,0)]), self.ativo) 
+        dados, retornos = self._dados, np.array([self.retorno(precos[i],precos[i+1], tipo) for i in range(len(precos[:-1]))])
+        return self.__class__(list(self.__dict__)[3:]+['retornos'], np.column_stack([dados, np.append(retornos,0)]), self._ativo) 
       
     # Gera coluna com as curvas moveis
     def curvas_moveis(self, n):
         precos = self.__dict__['price']
         curvas = [sum(precos[i:(i+n)])/len(precos[i:(i+n)]) for i in range(len(precos)-(n-1))]
         curvas = np.append(curvas, [0 for i in range(n-1)])
-        return self.__class__(list(self.__dict__)[3:]+['curva_movel'], np.column_stack([self.dados, curvas]), self.ativo)      
+        return self.__class__(list(self.__dict__)[3:]+['curva_movel'], np.column_stack([self._dados, curvas]), self._ativo)      
         
     # Simula o resultado de operações seguindo uma curva móvel
     def simulacao(self, n, valor):
@@ -167,44 +193,26 @@ class Features_series(Features):
         return beta
         
 
-
-class Serie:
-
+class SerieCotacoes(Serie):
     def __init__(self, dados):
-        self.dados = dados[1]
-        self.head = dados[0]
-        self.ativos = dados[2]
-        
-        for j, i in enumerate(self.ativos):
-            setattr(self, i, Features_series(self.head, self.dados[j], i))
-            
-
-    def __repr__(self):
-        if len(self.dados)==1:
-            return str(tabulate(np.concatenate(([self.head], np.array(self.dados[0])))))
-        else:
-            return ','.join(self.ativos)
-            
-
-    def __getitem__(self, ativo):
-        return self.__dict__[ativo]
+        super().__init__(dados, Features_series)
         
     # Gera a matriz de correlação
     def matriz_correl(self):
         ativos = list(self.__dict__)[3:]
         self.gera_retornos()
         retornos = [self.__dict__[i].retornos for i in ativos]
-        return [[[pearsonr(i[:min(len(i), len(j))-1], j[:min(len(i), len(j))-1])[0] for j in retornos] for i in retornos], self.ativos]
+        return [[[pearsonr(i[:min(len(i), len(j))-1], j[:min(len(i), len(j))-1])[0] for j in retornos] for i in retornos], self._ativos]
 
     # Gera a coluna de retornos dia a dia
     def gera_retornos(self):
-        for i in self.ativos:
+        for i in self._ativos:
             if 'retornos' not in self.__dict__[i].__dict__:
                 self.__dict__[i] = self.__dict__[i].gera_retornos()
 
     # Gera coluna de curvas moveis
     def curvas_moveis(self, n):
-        for i in self.ativos:
+        for i in self._ativos:
             if 'curva_movel' not in self.__dict__[i].__dict__:
                 self.__dict__[i] = self.__dict__[i].curvas_moveis(n)
 

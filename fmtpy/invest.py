@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 import numpy as np
 from datetime import datetime
+import pandas as pd
 
 mes_trimestre = {
 3:1, 6:2, 9:3, 12:4
@@ -20,6 +21,7 @@ def ascii(str):
 # converte string para date
 def todate(data):
     return datetime.strptime(data, "%d/%m/%Y").date()
+        
 
 # Função para fazer obter o html do site da b3,
 # muitas vezes a página fica carregando muito tempo, é necessário recarregar algumas vezes até funcionar
@@ -325,6 +327,9 @@ class Balanco:
         return [colunas, tabela1]
 
 
+    def df(self, ind, ano, tri, ajustado=True):
+        tabela = self.get(ind, ano, tri, ajustado=True)
+        return pd.DataFrame(tabela[1], columns=tabela[0])
 
 
 

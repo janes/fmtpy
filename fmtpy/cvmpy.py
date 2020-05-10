@@ -11,8 +11,8 @@ from fmtpy import invest as inv
 
 
 options = webdriver.ChromeOptions()
-#options.add_argument("--headless")
-options.add_argument("--start-maximized")
+options.add_argument("--headless")
+#options.add_argument("--start-maximized")
 
 headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 

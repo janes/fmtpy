@@ -3,17 +3,38 @@
 from fmtpy import main 
 from fmtpy import cvmpy
 from fmtpy import invest
+from fmtpy import bi
+from fmtpy import opcoes
 
-class Balancos_invest(invest.Balanco):
+class BalancosInvest(invest.Balanco):
     def __init__(self, papel):
         super().__init__(papel, True)
 
-class Balancos_cvm(cvmpy.Balanco):
+class BalancosCVM(cvmpy.Balanco):
     def __init__(self, papel, wdriver = 'chromedriver.exe'):
         super().__init__(papel, wdriver)
 
 
+class Balancos:
+    def __init__(self, papel, wdriver = False, cnn = False):
+        self.call(papel, wdriver, cnn, fonte)
+
+    def call(self, papel, wdriver, cnn, fonte):
+        if cnn:
+            return bi.Balanco(papel, cnn)
+        elif wdriver:
+            return cvm.Balanco(papel, wdriver)
+        else:
+            return invest.Balanco(papel)
+
+
+
 class Series(main.Series):
+    def __init__(self, papel):
+        super().__init__(papel)
+
+
+class Opcoes(opcoes.Opcoes):
     def __init__(self, papel):
         super().__init__(papel)
 
