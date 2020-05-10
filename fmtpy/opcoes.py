@@ -1,6 +1,6 @@
 
-from fmtpy import main
-#import main
+#from fmtpy import main
+import main
 import numpy as np
 import requests
 import json
@@ -34,10 +34,10 @@ class Opcoes:
         opc=[]
         for i in self.papel:
             opc.append(self.lista_opcoes(i))
-        if len(self.papel)>0:
+        if len(self.papel)>1:
             return Serie([['ativo', 'tipo', 'mod', 'vcto', 'strike', 'price'], opc, self.papel])
         else:
-            return Features(['ativo', 'tipo', 'mod', 'vcto', 'strike', 'price'], opc, self.papel[0])
+            return Features(['ativo', 'tipo', 'mod', 'vcto', 'strike', 'price'], opc[0], self.papel[0])
 
         
 
