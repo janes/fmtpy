@@ -15,17 +15,15 @@ class BalancosCVM(cvmpy.Balanco):
         super().__init__(papel, wdriver)
 
 
-class Balancos:
-    def __init__(self, papel, wdriver = False, cnn = False):
-        self.call(papel, wdriver, cnn)
 
-    def call(self, papel, wdriver, cnn):
-        if cnn:
-            return bi.Balanco(papel, cnn)
-        elif wdriver:
-            return cvmpy.Balanco(papel, wdriver)
-        else:
-            return invest.Balanco(papel)
+
+def balanco(papel, wdriver=False, cnn=False):
+    if cnn:
+        return bi.Balanco(papel, cnn)
+    elif wdriver:
+        return cvmpy.Balanco(papel, wdriver)
+    else:
+        return invest.Balanco(papel)
 
 
 
