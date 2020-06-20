@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 import numpy as np
 from datetime import datetime
-import pandas as pd
+
 
 mes_trimestre = {
 3:1, 6:2, 9:3, 12:4
@@ -329,6 +329,7 @@ class Balanco:
 
     def df(self, ind, ano, tri, ajustado=True):
         tabela = self.get(ind, ano, tri, ajustado=True)
+        import pandas as pd
         return pd.DataFrame(tabela[1], columns=tabela[0])
 
 

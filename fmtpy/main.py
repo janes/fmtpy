@@ -9,7 +9,8 @@ from tabulate import tabulate
 from scipy.stats import norm
 from scipy.stats import pearsonr
 
-import pandas as pd
+
+
 
 headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
@@ -49,6 +50,7 @@ class Features:
 
     def df(self):
         matriz = self.np()
+        import pandas as pd
         return pd.DataFrame(matriz[1], columns=matriz[0])
 
 
@@ -211,6 +213,7 @@ class SerieCotacoes(Serie):
         self.gera_retornos(tipo)
         retornos = [self.__dict__[i].retornos for i in ativos]
         matriz = [[[pearsonr(i[:min(len(i), len(j))-1], j[:min(len(i), len(j))-1])[0] for j in retornos] for i in retornos], self._ativos]
+        import pandas as pd
         return pd.DataFrame(matriz[0], columns = matriz[1], index=matriz[1])
 
     # Gera a coluna de retornos dia a dia

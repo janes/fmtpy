@@ -1,7 +1,6 @@
 
 import sqlite3
 import numpy as np
-import pandas as pd
 from fmtpy import main
 #import main
 from fmtpy import cvmpy as cvm
@@ -107,6 +106,7 @@ class Features(main.Features):
 
     def df(self):
         tabela = self.np()
+        import pandas as pd
         return pd.DataFrame(tabela[1], columns=tabela[0])
 
 
